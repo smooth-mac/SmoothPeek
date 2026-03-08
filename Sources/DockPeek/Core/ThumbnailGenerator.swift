@@ -26,7 +26,7 @@ final class ThumbnailGenerator {
         }
 
         let image: NSImage?
-        if #available(macOS 13.0, *) {
+        if #available(macOS 14.0, *) {
             image = await captureWithSCKit(windowID: window.id, size: size)
         } else {
             image = captureWithCGWindow(windowID: window.id, size: size)
@@ -44,7 +44,7 @@ final class ThumbnailGenerator {
 
     // MARK: - ScreenCaptureKit (macOS 13+)
 
-    @available(macOS 13.0, *)
+    @available(macOS 14.0, *)
     private func captureWithSCKit(windowID: CGWindowID, size: CGSize) async -> NSImage? {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)

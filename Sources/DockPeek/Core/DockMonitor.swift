@@ -10,6 +10,7 @@ import ApplicationServices
 final class DockMonitor {
     var onAppHovered: ((String?, NSRunningApplication?) -> Void)?
     var onHoverEnded: (() -> Void)?
+    var onPermissionError: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -74,6 +75,9 @@ final class DockMonitor {
 
         guard let tap = eventTap else {
             print("[DockMonitor] CGEventTap 생성 실패 — 접근성 권한을 확인하세요.")
+            DispatchQueue.main.async { [weak self] in
+                self?.onPermissionError?()
+            }
             return
         }
 

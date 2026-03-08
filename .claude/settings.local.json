@@ -11,7 +11,10 @@
       "Bash(git add .)",
       "Bash(git rm -r --cached .build/)",
       "Bash(git add .gitignore)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git rm --cached .claude/settings.local.json)",
+      "Bash(git commit:*)",
+      "Bash(swift build)"
     ]
   }
 }

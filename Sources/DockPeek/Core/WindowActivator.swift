@@ -4,46 +4,62 @@ import Cocoa
 enum WindowActivator {
     /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동
     static func activate(window: WindowInfo, app: NSRunningApplication) {
-        // 1. 앱 활성화
         app.activate(options: [.activateIgnoringOtherApps])
 
-        // 2. AXUIElement로 특정 윈도우 포커스
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            raiseWindow(windowID: window.id, pid: app.processIdentifier)
+            raiseWindow(window: window, pid: app.processIdentifier)
         }
     }
 
-    private static func raiseWindow(windowID: CGWindowID, pid: pid_t) {
+    private static func raiseWindow(window: WindowInfo, pid: pid_t) {
         let appElement = AXUIElementCreateApplication(pid)
 
         var windowsRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
-              let windows = windowsRef as? [AXUIElement] else { return }
+              let axWindows = windowsRef as? [AXUIElement] else { return }
 
-        for axWindow in windows {
-            var idValue: CGWindowID = 0
-            // _AXUIElementGetWindow은 private API — 대신 위치/크기로 매칭
-            // TODO: CGWindowID ↔ AXUIElement 매핑을 위해 private API(_AXUIElementGetWindow) 또는
-            //       pid + 순서 기반 매핑 방식 검토 필요
-            if matchesWindowID(axWindow, targetID: windowID) {
+        for axWindow in axWindows {
+            if matchesWindow(axWindow, target: window) {
                 AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
-                AXUIElementSetAttributeValue(axWindow, kAXFocusedAttribute as CFString, true as CFTypeRef)
-
-                // Raise action
                 AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
                 break
             }
         }
-
-        _ = idValue // suppress warning
     }
 
-    /// AXUIElement와 CGWindowID 매칭 (private API 없이)
-    /// 실제 구현 시 _AXUIElementGetWindow 또는 frame 기반 매칭 사용
-    private static func matchesWindowID(_ element: AXUIElement, targetID: CGWindowID) -> Bool {
-        // TODO: 신뢰도 높은 매핑 구현
-        // Option A: dlsym으로 _AXUIElementGetWindow 심볼 로드 (private)
-        // Option B: 윈도우 frame으로 근사 매칭
-        return false
+    /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭
+    ///
+    /// AXUIElement는 NS 좌표계(좌하단 원점), CGWindowList는 CG 좌표계(좌상단 원점)이므로
+    /// 비교 전 좌표 변환을 수행한다.
+    private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
+        var posRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success else { return false }
+
+        var axPos = CGPoint.zero
+        var axSize = CGSize.zero
+        AXValueGetValue(posRef as! AXValue, .cgPoint, &axPos)
+        AXValueGetValue(sizeRef as! AXValue, .cgSize, &axSize)
+
+        // AX 좌표(NS, 좌하단 원점) → CG 좌표(좌상단 원점) 변환
+        let screenHeight = NSScreen.main?.frame.height ?? 0
+        let cgY = screenHeight - axPos.y - axSize.height
+        let axFrame = CGRect(x: axPos.x, y: cgY, width: axSize.width, height: axSize.height)
+
+        let tolerance: CGFloat = 4
+        guard abs(axFrame.origin.x - target.frame.origin.x) < tolerance,
+              abs(axFrame.origin.y - target.frame.origin.y) < tolerance,
+              abs(axFrame.size.width - target.frame.size.width) < tolerance,
+              abs(axFrame.size.height - target.frame.size.height) < tolerance else { return false }
+
+        // 동일한 크기의 윈도우가 여러 개일 때 title로 보조 검증
+        var titleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
+        if let axTitle = titleRef as? String, !axTitle.isEmpty, !target.title.isEmpty {
+            return axTitle == target.title
+        }
+
+        return true
     }
 }

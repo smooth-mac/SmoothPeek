@@ -75,25 +75,62 @@ final class PreviewPanelController {
         return CGSize(width: width, height: height)
     }
 
+    // MARK: - Dock Position
+
+    private enum DockEdge {
+        case bottom(height: CGFloat)
+        case left(width: CGFloat)
+        case right(width: CGFloat)
+    }
+
+    /// NSScreen의 visibleFrame 차이를 이용해 Dock 위치와 크기를 계산한다.
+    private func dockEdge(on screen: NSScreen) -> DockEdge {
+        let frame = screen.frame
+        let visible = screen.visibleFrame
+
+        if visible.minX > 4 {
+            return .left(width: visible.minX)
+        } else if frame.maxX - visible.maxX > 4 {
+            return .right(width: frame.maxX - visible.maxX)
+        } else {
+            return .bottom(height: visible.minY)
+        }
+    }
+
     /// 패널을 Dock 위 해당 앱 아이콘 근처에 배치
     private func positionPanel(_ panel: NSPanel, near app: NSRunningApplication) {
         guard let screen = NSScreen.main else { return }
         let panelSize = panel.frame.size
-        let dockHeight: CGFloat = 70 // 근사값 — 추후 실제 Dock 크기 계산으로 교체
+        let edge = dockEdge(on: screen)
+        let iconCenter = findDockIconCenter(for: app)
 
-        let center = findDockIconCenter(for: app) ?? CGPoint(
-            x: screen.frame.midX,
-            y: dockHeight
-        )
+        let x: CGFloat
+        let y: CGFloat
 
-        let x = (center.x - panelSize.width / 2)
-            .clamped(to: 8...(screen.frame.maxX - panelSize.width - 8))
-        let y = dockHeight + 8
+        switch edge {
+        case .bottom(let dockHeight):
+            let centerX = iconCenter?.x ?? screen.frame.midX
+            x = (centerX - panelSize.width / 2)
+                .clamped(to: 8...(screen.frame.maxX - panelSize.width - 8))
+            y = dockHeight + 8
+
+        case .left(let dockWidth):
+            x = dockWidth + 8
+            let centerY = iconCenter.map { $0.y - panelSize.height / 2 }
+                ?? (screen.frame.midY - panelSize.height / 2)
+            y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
+
+        case .right(let dockWidth):
+            x = screen.frame.maxX - dockWidth - panelSize.width - 8
+            let centerY = iconCenter.map { $0.y - panelSize.height / 2 }
+                ?? (screen.frame.midY - panelSize.height / 2)
+            y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
+        }
 
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    /// Dock 아이콘의 화면 중앙 좌표를 AXUIElement로 추출
+    /// Dock 아이콘의 화면 중앙 좌표를 AXUIElement로 추출 (NS 좌표계)
     private func findDockIconCenter(for app: NSRunningApplication) -> CGPoint? {
         guard let dockApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.bundleIdentifier == "com.apple.dock"
