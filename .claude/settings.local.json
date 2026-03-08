@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/juholee/DockPeek/.claude/agents)",
+      "Bash(cp /Users/juholee/SnapMaster/.claude/agents/*.md /Users/juholee/DockPeek/.claude/agents/)",
+      "Bash(for f in /Users/juholee/DockPeek/.claude/agents/*.md)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//Users/juholee/DockPeek/**)",
+      "Bash(done)",
+      "Bash(git init)",
+      "Bash(git add .)",
+      "Bash(git rm -r --cached .build/)",
+      "Bash(git add .gitignore)",
+      "Bash(git add -A)"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DockPeek}",
+            "name": "Debug DockPeek",
+            "target": "DockPeek",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug DockPeek"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DockPeek}",
+            "name": "Release DockPeek",
+            "target": "DockPeek",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release DockPeek"
+        }
+    ]
+}
