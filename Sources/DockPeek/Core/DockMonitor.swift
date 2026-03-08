@@ -161,12 +161,14 @@ final class DockMonitor {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success else { return nil }
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
+              let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { return nil }
 
         var pos = CGPoint.zero
         var size = CGSize.zero
-        AXValueGetValue(posRef as! AXValue, .cgPoint, &pos)
-        AXValueGetValue(sizeRef as! AXValue, .cgSize, &size)
+        AXValueGetValue(posVal as! AXValue, .cgPoint, &pos)   // safe: type ID checked
+        AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)  // safe: type ID checked
 
         return NSRect(origin: pos, size: size)
     }

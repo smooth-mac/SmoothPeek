@@ -27,24 +27,32 @@ enum WindowActivator {
         }
     }
 
-    /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭
+    /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭.
     ///
-    /// AXUIElement는 NS 좌표계(좌하단 원점), CGWindowList는 CG 좌표계(좌상단 원점)이므로
-    /// 비교 전 좌표 변환을 수행한다.
+    /// 좌표 변환:
+    /// - AX는 NS 좌표계(좌하단 원점, y 위로 증가)
+    /// - CGWindowList는 CG 좌표계(좌상단 원점, y 아래로 증가)
+    /// - 변환식: cgY = primaryScreenHeight - axY - height
+    ///
+    /// primaryScreenHeight는 반드시 NSScreen.screens.first를 사용해야 한다.
+    /// NSScreen.main은 현재 포커스된 윈도우의 화면으로, 보조 모니터일 경우
+    /// 높이가 달라져 Y 변환이 틀리게 된다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success else { return false }
+              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+              let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
+              let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { return false }
 
         var axPos = CGPoint.zero
         var axSize = CGSize.zero
-        AXValueGetValue(posRef as! AXValue, .cgPoint, &axPos)
-        AXValueGetValue(sizeRef as! AXValue, .cgSize, &axSize)
+        AXValueGetValue(posVal as! AXValue, .cgPoint, &axPos)   // safe: type ID checked
+        AXValueGetValue(sizeVal as! AXValue, .cgSize, &axSize)  // safe: type ID checked
 
-        // AX 좌표(NS, 좌하단 원점) → CG 좌표(좌상단 원점) 변환
-        let screenHeight = NSScreen.main?.frame.height ?? 0
-        let cgY = screenHeight - axPos.y - axSize.height
+        // ISSUE-01 수정: primary screen 기준으로 Y-flip (보조 모니터 윈도우도 정확히 매칭)
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let cgY = primaryHeight - axPos.y - axSize.height
         let axFrame = CGRect(x: axPos.x, y: cgY, width: axSize.width, height: axSize.height)
 
         let tolerance: CGFloat = 4
@@ -53,7 +61,9 @@ enum WindowActivator {
               abs(axFrame.size.width - target.frame.size.width) < tolerance,
               abs(axFrame.size.height - target.frame.size.height) < tolerance else { return false }
 
-        // 동일한 크기의 윈도우가 여러 개일 때 title로 보조 검증
+        // 동일 크기 윈도우가 여러 개일 때 title로 보조 검증.
+        // target.title이 실제 창 제목이 아닌 fallback(앱 이름 등)일 수 있으므로
+        // AX title이 available하고 target title이 비어있지 않을 때만 비교한다.
         var titleRef: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
         if let axTitle = titleRef as? String, !axTitle.isEmpty, !target.title.isEmpty {

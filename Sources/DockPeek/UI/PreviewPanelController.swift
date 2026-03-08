@@ -83,23 +83,37 @@ final class PreviewPanelController {
         case right(width: CGFloat)
     }
 
+    /// Dock이 위치한 화면을 반환한다.
+    ///
+    /// Dock은 항상 primary screen(NSScreen.screens.first)에 위치한다.
+    /// NSScreen.main은 현재 키 윈도우가 있는 화면으로 보조 모니터일 수 있으므로 사용하지 않는다.
+    private func dockScreen() -> NSScreen? {
+        NSScreen.screens.first
+    }
+
     /// NSScreen의 visibleFrame 차이를 이용해 Dock 위치와 크기를 계산한다.
+    ///
+    /// Auto-hide 상태에서는 visibleFrame 차이가 거의 0이 되므로
+    /// 최솟값(minDockSize)을 보장해 패널이 Dock 트리거 영역 뒤에 가려지지 않도록 한다.
     private func dockEdge(on screen: NSScreen) -> DockEdge {
         let frame = screen.frame
         let visible = screen.visibleFrame
+        let minDockSize: CGFloat = 4 // auto-hide 트리거 영역 여유
 
         if visible.minX > 4 {
-            return .left(width: visible.minX)
+            return .left(width: max(visible.minX, minDockSize))
         } else if frame.maxX - visible.maxX > 4 {
-            return .right(width: frame.maxX - visible.maxX)
+            return .right(width: max(frame.maxX - visible.maxX, minDockSize))
         } else {
-            return .bottom(height: visible.minY)
+            // bottom dock (또는 auto-hide)
+            return .bottom(height: max(visible.minY, minDockSize))
         }
     }
 
     /// 패널을 Dock 위 해당 앱 아이콘 근처에 배치
     private func positionPanel(_ panel: NSPanel, near app: NSRunningApplication) {
-        guard let screen = NSScreen.main else { return }
+        // ISSUE-03 수정: primary screen(Dock이 있는 화면) 기준으로 계산
+        guard let screen = dockScreen() else { return }
         let panelSize = panel.frame.size
         let edge = dockEdge(on: screen)
         let iconCenter = findDockIconCenter(for: app)
@@ -160,12 +174,14 @@ final class PreviewPanelController {
                 var posRef: CFTypeRef?
                 var sizeRef: CFTypeRef?
                 guard AXUIElementCopyAttributeValue(item, kAXPositionAttribute as CFString, &posRef) == .success,
-                      AXUIElementCopyAttributeValue(item, kAXSizeAttribute as CFString, &sizeRef) == .success else { continue }
+                      AXUIElementCopyAttributeValue(item, kAXSizeAttribute as CFString, &sizeRef) == .success,
+                      let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
+                      let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { continue }
 
                 var pos = CGPoint.zero
                 var size = CGSize.zero
-                AXValueGetValue(posRef as! AXValue, .cgPoint, &pos)
-                AXValueGetValue(sizeRef as! AXValue, .cgSize, &size)
+                AXValueGetValue(posVal as! AXValue, .cgPoint, &pos)   // safe: type ID checked
+                AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)  // safe: type ID checked
 
                 return CGPoint(x: pos.x + size.width / 2, y: pos.y + size.height / 2)
             }

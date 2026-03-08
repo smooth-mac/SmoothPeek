@@ -42,7 +42,7 @@ final class ThumbnailGenerator {
         cache.removeAll()
     }
 
-    // MARK: - ScreenCaptureKit (macOS 13+)
+    // MARK: - ScreenCaptureKit (macOS 14+)
 
     @available(macOS 14.0, *)
     private func captureWithSCKit(windowID: CGWindowID, size: CGSize) async -> NSImage? {
