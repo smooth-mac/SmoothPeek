@@ -167,9 +167,10 @@ final class PreviewPanelController {
             for item in items {
                 var urlRef: CFTypeRef?
                 AXUIElementCopyAttributeValue(item, kAXURLAttribute as CFString, &urlRef)
-                guard let urlStr = urlRef as? String,
-                      let url = URL(string: urlStr),
-                      Bundle(url: url)?.bundleIdentifier == app.bundleIdentifier else { continue }
+                guard let urlRef,
+                      CFGetTypeID(urlRef) == CFURLGetTypeID(),
+                      let bundleID = Bundle(url: urlRef as! CFURL as URL)?.bundleIdentifier,
+                      bundleID == app.bundleIdentifier else { continue }
 
                 var posRef: CFTypeRef?
                 var sizeRef: CFTypeRef?

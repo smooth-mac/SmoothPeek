@@ -89,11 +89,9 @@ final class DockMonitor {
     // MARK: - 마우스 이벤트 처리
 
     private func handleMouseMoved(_ point: CGPoint) {
-        // CG 좌표(좌상단 원점) → NS 좌표(좌하단 원점) 변환
-        let screenHeight = NSScreen.main?.frame.height ?? 0
-        let nsPoint = NSPoint(x: point.x, y: screenHeight - point.y)
-
-        guard let hoveredApp = findHoveredDockApp(at: nsPoint) else {
+        // AXUIElement 좌표계는 CG 좌표계(좌상단 원점, y 아래로)와 동일하다.
+        // 마우스 이벤트도 CG 좌표이므로 변환 없이 직접 비교한다.
+        guard let hoveredApp = findHoveredDockApp(at: point) else {
             scheduleHoverEnd()
             return
         }
@@ -128,10 +126,10 @@ final class DockMonitor {
     // MARK: - Dock 아이콘 탐색
 
     /// Dock의 AXUIElement를 탐색해 마우스 위치에 해당하는 앱을 반환
-    private func findHoveredDockApp(at nsPoint: NSPoint) -> NSRunningApplication? {
+    /// - Parameter point: CG 좌표계(좌상단 원점)의 마우스 위치
+    private func findHoveredDockApp(at point: CGPoint) -> NSRunningApplication? {
         guard let dockElement = dockAXElement else { return nil }
 
-        // Dock의 자식 요소(앱 리스트, 트래시 등) 가져오기
         var childrenRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(dockElement, kAXChildrenAttribute as CFString, &childrenRef) == .success,
               let children = childrenRef as? [AXUIElement] else { return nil }
@@ -141,14 +139,13 @@ final class DockMonitor {
             AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleRef)
             guard (roleRef as? String) == kAXListRole as String else { continue }
 
-            // 앱 리스트 내 아이콘 탐색
             var itemsRef: CFTypeRef?
             guard AXUIElementCopyAttributeValue(child, kAXChildrenAttribute as CFString, &itemsRef) == .success,
                   let items = itemsRef as? [AXUIElement] else { continue }
 
             for item in items {
                 guard let frame = axFrame(of: item),
-                      frame.contains(nsPoint) else { continue }
+                      frame.contains(point) else { continue }
 
                 return runningApp(for: item)
             }
@@ -156,7 +153,7 @@ final class DockMonitor {
         return nil
     }
 
-    /// AXUIElement의 화면 프레임 반환 (NS 좌표계)
+    /// AXUIElement의 프레임 반환 (CG 좌표계 — AX API 좌표는 좌상단 원점)
     private func axFrame(of element: AXUIElement) -> NSRect? {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
@@ -174,14 +171,19 @@ final class DockMonitor {
     }
 
     /// AXUIElement의 URL 속성에서 번들 ID를 추출해 실행 중인 앱 반환
+    ///
+    /// AXURL은 CFURL 타입으로 반환된다 (String 아님).
     private func runningApp(for item: AXUIElement) -> NSRunningApplication? {
         var urlRef: CFTypeRef?
         AXUIElementCopyAttributeValue(item, kAXURLAttribute as CFString, &urlRef)
 
-        guard let urlString = urlRef as? String,
-              let url = URL(string: urlString) else { return nil }
+        guard let urlRef,
+              CFGetTypeID(urlRef) == CFURLGetTypeID() else { return nil }
 
+        let url = urlRef as! CFURL as URL  // safe: type ID checked
         let bundleID = Bundle(url: url)?.bundleIdentifier ?? ""
+        guard !bundleID.isEmpty else { return nil }
+
         return NSWorkspace.shared.runningApplications.first {
             $0.bundleIdentifier == bundleID
         }
