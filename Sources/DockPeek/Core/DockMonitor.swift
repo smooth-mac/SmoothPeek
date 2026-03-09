@@ -20,7 +20,6 @@ final class DockMonitor {
 
     private var lastHoveredBundleID: String?
     private var hoverTimer: Timer?
-    private static let hoverDelay: TimeInterval = 0.4 // 호버 인식 딜레이 (초)
 
     // MARK: - Lifecycle
 
@@ -102,7 +101,11 @@ final class DockMonitor {
         cancelHoverTimer()
         lastHoveredBundleID = bundleID
 
-        hoverTimer = Timer.scheduledTimer(withTimeInterval: Self.hoverDelay, repeats: false) { [weak self] _ in
+        // AppSettings.shared는 @MainActor 격리이므로 CGEventTap 콜백(메인 런루프)에서
+        // 직접 접근하지 않고, 같은 UserDefaults 키를 통해 값을 읽는다.
+        let delay = UserDefaults.standard.double(forKey: "hoverDelay")
+        let hoverDelay = delay > 0 ? delay : 0.4
+        hoverTimer = Timer.scheduledTimer(withTimeInterval: hoverDelay, repeats: false) { [weak self] _ in
             self?.onAppHovered?(bundleID, hoveredApp)
         }
     }

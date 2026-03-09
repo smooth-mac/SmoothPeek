@@ -114,8 +114,8 @@ final class PreviewPanelController {
     // MARK: - Layout
 
     private func preferredSize(windowCount: Int) -> CGSize {
-        let thumbWidth: CGFloat = 200
-        let thumbHeight: CGFloat = 130
+        let thumbWidth  = CGFloat(AppSettings.shared.thumbnailWidth)
+        let thumbHeight = CGFloat(AppSettings.shared.thumbnailHeight)
         let padding: CGFloat = 12
         let columns = min(windowCount, 4)
         let rows = Int(ceil(Double(windowCount) / Double(columns)))

@@ -1,9 +1,13 @@
 import Cocoa
+import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var dockMonitor: DockMonitor?
     private var previewController: PreviewPanelController?
+
+    /// 환경설정 윈도우 — 단일 인스턴스를 유지해 재클릭 시 기존 윈도우를 활성화한다.
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 백그라운드 앱 (Dock 아이콘 없음)
@@ -34,10 +38,46 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "DockPeek 실행 중", action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
+
+        let prefsItem = NSMenuItem(
+            title: "환경설정...",
+            action: #selector(openSettings),
+            keyEquivalent: ","
+        )
+        prefsItem.target = self
+        menu.addItem(prefsItem)
+
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "종료", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem?.menu = menu
         statusItem?.button?.performClick(nil)
         statusItem?.menu = nil
+    }
+
+    @objc private func openSettings() {
+        // 기존 윈도우가 살아 있으면 앞으로 가져온다
+        if let existing = settingsWindow, existing.isVisible {
+            NSApp.activate(ignoringOtherApps: true)
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = makeSettingsWindow()
+        settingsWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    // MARK: - Settings Window Factory
+
+    private func makeSettingsWindow() -> NSWindow {
+        let host = NSHostingController(rootView: SettingsView())
+        let window = NSWindow(contentViewController: host)
+        window.title = "DockPeek 환경설정"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        return window
     }
 
     // MARK: - Permissions
