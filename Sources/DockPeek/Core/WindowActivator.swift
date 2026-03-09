@@ -92,14 +92,10 @@ enum WindowActivator {
 
     /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭.
     ///
-    /// 좌표 변환:
-    /// - AX는 NS 좌표계(좌하단 원점, y 위로 증가)
-    /// - CGWindowList는 CG 좌표계(좌상단 원점, y 아래로 증가)
-    /// - 변환식: cgY = primaryScreenHeight - axY - height
-    ///
-    /// primaryScreenHeight는 반드시 NSScreen.screens.first를 사용해야 한다.
-    /// NSScreen.main은 현재 포커스된 윈도우의 화면으로, 보조 모니터일 경우
-    /// 높이가 달라져 Y 변환이 틀리게 된다.
+    /// 좌표계:
+    /// - kAXPositionAttribute는 CG 좌표계(좌상단 원점, y 아래로 증가)를 반환한다.
+    /// - CGWindowList의 kCGWindowBounds도 동일한 CG 좌표계이다.
+    /// - 따라서 두 값을 그대로 비교할 수 있으며 Y-flip 변환이 불필요하다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
@@ -113,10 +109,8 @@ enum WindowActivator {
         AXValueGetValue(posVal as! AXValue, .cgPoint, &axPos)   // safe: type ID checked
         AXValueGetValue(sizeVal as! AXValue, .cgSize, &axSize)  // safe: type ID checked
 
-        // ISSUE-01 수정: primary screen 기준으로 Y-flip (보조 모니터 윈도우도 정확히 매칭)
-        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-        let cgY = primaryHeight - axPos.y - axSize.height
-        let axFrame = CGRect(x: axPos.x, y: cgY, width: axSize.width, height: axSize.height)
+        // AX와 CGWindowList 모두 CG 좌표계 — 변환 없이 직접 비교
+        let axFrame = CGRect(x: axPos.x, y: axPos.y, width: axSize.width, height: axSize.height)
 
         let tolerance: CGFloat = 4
         guard abs(axFrame.origin.x - target.frame.origin.x) < tolerance,
