@@ -3,7 +3,7 @@ import ScreenCaptureKit
 
 /// 윈도우 썸네일을 비동기로 생성하는 클래스.
 ///
-/// - macOS 13+: ScreenCaptureKit (SCScreenshotManager) 사용 — 고품질, 권한 필요
+/// - macOS 14+: ScreenCaptureKit (SCScreenshotManager) 사용 — 고품질, 권한 필요
 /// - Fallback: CGWindowListCreateImageFromArray 사용 — 저품질, 권한 불필요
 @MainActor
 final class ThumbnailGenerator {

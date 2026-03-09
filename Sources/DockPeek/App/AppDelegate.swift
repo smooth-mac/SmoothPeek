@@ -54,6 +54,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // P1-4: CGEventTap 생성 실패 시 사용자에게 안내
     private func showPermissionAlert() {
+        // 상태바 아이콘을 경고 아이콘으로 변경 — runModal() 이전에 수행해야
+        // 모달이 떠 있는 동안에도 아이콘이 오류 상태를 반영한다.
+        statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "DockPeek — 권한 필요")
+        statusItem?.button?.toolTip = "DockPeek: 접근성 권한이 필요합니다"
+
         let alert = NSAlert()
         alert.messageText = "접근성 권한이 필요합니다"
         alert.informativeText = "DockPeek가 Dock 이벤트를 감지하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 DockPeek를 허용한 후 앱을 재시작해 주세요."
@@ -65,10 +70,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
             NSWorkspace.shared.open(url)
         }
-
-        // 상태바 아이콘을 경고 아이콘으로 변경
-        statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "DockPeek — 권한 필요")
-        statusItem?.button?.toolTip = "DockPeek: 접근성 권한이 필요합니다"
     }
 
     // MARK: - Core

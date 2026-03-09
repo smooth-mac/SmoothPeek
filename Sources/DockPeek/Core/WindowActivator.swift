@@ -62,14 +62,21 @@ enum WindowActivator {
               abs(axFrame.size.height - target.frame.size.height) < tolerance else { return false }
 
         // 동일 크기 윈도우가 여러 개일 때 title로 보조 검증.
-        // target.title이 실제 창 제목이 아닌 fallback(앱 이름 등)일 수 있으므로
-        // AX title이 available하고 target title이 비어있지 않을 때만 비교한다.
+        //
+        // [불변 조건] target.title은 WindowEnumerator에서
+        //   kCGWindowName ?? app.localizedName 으로 채워지므로 실질적으로 비어있지 않다.
+        //
+        // [의도적 skip] axTitle이 비어있는 경우(무제목 창, 일부 유틸리티 패널 등)는
+        //   title 비교를 건너뛰고 frame 매칭만으로 true를 반환한다.
+        //   이는 무제목 창이 여러 개일 때 첫 번째 AX 순서 창을 선택하는 합리적 fallback이다.
         var titleRef: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
-        if let axTitle = titleRef as? String, !axTitle.isEmpty, !target.title.isEmpty {
+        if let axTitle = titleRef as? String, !axTitle.isEmpty {
+            // target.title은 항상 비어있지 않으므로 axTitle만 검사하면 충분하다.
             return axTitle == target.title
         }
 
+        // axTitle을 읽을 수 없거나 빈 문자열이면 frame 매칭 결과를 그대로 채택한다.
         return true
     }
 }
