@@ -19,6 +19,26 @@
             "target": "DockPeek",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release DockPeek"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DockPeek}",
+            "name": "Debug SmoothPeek",
+            "target": "SmoothPeek",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug SmoothPeek"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:DockPeek}",
+            "name": "Release SmoothPeek",
+            "target": "SmoothPeek",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release SmoothPeek"
         }
     ]
 }

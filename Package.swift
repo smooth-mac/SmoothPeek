@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "DockPeek",
+    name: "SmoothPeek",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "DockPeek",
-            path: "Sources/DockPeek",
+            name: "SmoothPeek",
+            path: "Sources/SmoothPeek",
             swiftSettings: [
                 .unsafeFlags(["-parse-as-library"])
             ]

@@ -1,7 +1,7 @@
-# DockPeek Phase 1 — QA Review Report
+# SmoothPeek Phase 1 — QA Review Report
 
 **Date:** 2026-03-09
-**Reviewer:** DockPeek QA Specialist
+**Reviewer:** SmoothPeek QA Specialist
 **Scope:** Phase 1 changes (P1-1 through P1-4 + ThumbnailGenerator fix)
 **Verdict:** PASS WITH CONDITIONS
 
@@ -17,7 +17,7 @@ Phase 1 delivers meaningful improvements over the prior always-false `matchesWin
 
 ### P1-1 · WindowActivator — AX ↔ CG Coordinate Conversion
 
-**File:** `Sources/DockPeek/Core/WindowActivator.swift`
+**File:** `Sources/SmoothPeek/Core/WindowActivator.swift`
 
 #### ISSUE-01 · SEVERITY: HIGH — Wrong screen used for coordinate conversion on multi-display setups
 
@@ -73,7 +73,7 @@ The `as!` force-cast will crash at runtime if the AX attribute returns an unexpe
 
 ### P1-2 · PreviewPanelController — Panel Positioning & DockEdge Detection
 
-**File:** `Sources/DockPeek/UI/PreviewPanelController.swift`
+**File:** `Sources/SmoothPeek/UI/PreviewPanelController.swift`
 
 #### ISSUE-03 · SEVERITY: MEDIUM — `positionPanel` uses `NSScreen.main`, not the screen containing the Dock icon
 
@@ -128,7 +128,7 @@ panel.setFrameOrigin(NSPoint(x: x, y: y))
 
 ### P1-3 · Bug Fixes — `hide()` on Empty Windows, `applicationWillTerminate`
 
-**File:** `Sources/DockPeek/App/AppDelegate.swift`
+**File:** `Sources/SmoothPeek/App/AppDelegate.swift`
 
 The `hide()` call for empty `windows` (lines 101–104) and `applicationWillTerminate` cleanup (lines 18–20) are both straightforward and correct. No issues found.
 
@@ -136,7 +136,7 @@ The `hide()` call for empty `windows` (lines 101–104) and `applicationWillTerm
 
 ### P1-4 · Permission UX — `onPermissionError` Callback and Alert
 
-**File:** `Sources/DockPeek/App/AppDelegate.swift`, `Sources/DockPeek/Core/DockMonitor.swift`
+**File:** `Sources/SmoothPeek/App/AppDelegate.swift`, `Sources/SmoothPeek/Core/DockMonitor.swift`
 
 #### ISSUE-06 · SEVERITY: LOW — `showPermissionAlert()` modifies the status bar icon after `runModal()` returns, but `runModal()` blocks the main thread
 
@@ -185,7 +185,7 @@ The `Task { @MainActor in }` wrappers are thus redundant but not harmful—they 
 
 ### ThumbnailGenerator — `SCScreenshotManager` Availability Fix
 
-**File:** `Sources/DockPeek/Core/ThumbnailGenerator.swift`
+**File:** `Sources/SmoothPeek/Core/ThumbnailGenerator.swift`
 
 The correction from `macOS 13` to `macOS 14.0` at lines 29 and 47 is correct. `SCScreenshotManager` was introduced in macOS 14.0 (Sonoma). The comment at line 6 still says `macOS 13+` and should be updated to `macOS 14+` for accuracy.
 
@@ -199,7 +199,7 @@ Should read `macOS 14+`.
 
 ### WindowEnumerator — Ancillary Observation
 
-**File:** `Sources/DockPeek/Core/WindowEnumerator.swift`
+**File:** `Sources/SmoothPeek/Core/WindowEnumerator.swift`
 
 `kCGWindowName` can be absent (not just empty) for some windows, and `dict[kCGWindowName] as? String` returns `nil` in that case, correctly falling back to `app.localizedName`. However, because `kCGWindowName` requires the Screen Recording permission on macOS 14+, it may return `nil` for all windows until permission is granted. In that scenario every window's title becomes the app name, which would make the title-based disambiguation in `matchesWindow` useless (all titles match, since every `WindowInfo.title` is the same app name). This is a cascading effect of the permission model, not a Phase 1 bug per se, but worth noting for Phase 2 testing.
 

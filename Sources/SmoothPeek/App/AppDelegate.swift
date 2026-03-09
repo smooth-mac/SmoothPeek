@@ -28,7 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "macwindow.on.rectangle", accessibilityDescription: "DockPeek")
+            button.image = NSImage(systemSymbolName: "macwindow.on.rectangle", accessibilityDescription: "SmoothPeek")
             button.action = #selector(statusBarClicked)
             button.target = self
         }
@@ -36,7 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func statusBarClicked() {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "DockPeek 실행 중", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "SmoothPeek 실행 중", action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
 
         let prefsItem = NSMenuItem(
@@ -77,7 +77,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeSettingsWindow() -> NSWindow {
         let host = NSHostingController(rootView: SettingsView())
         let window = NSWindow(contentViewController: host)
-        window.title = "DockPeek 환경설정"
+        window.title = "SmoothPeek 환경설정"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
         window.center()
@@ -90,7 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
         let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
         if !trusted {
-            print("[DockPeek] 접근성 권한이 필요합니다.")
+            print("[SmoothPeek] 접근성 권한이 필요합니다.")
             // 시스템 권한 요청 다이얼로그가 자동으로 표시됨 (prompt: true)
         }
         // 화면 녹화 권한은 ScreenCaptureKit 첫 사용 시 자동 요청됨
@@ -100,12 +100,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showPermissionAlert() {
         // 상태바 아이콘을 경고 아이콘으로 변경 — runModal() 이전에 수행해야
         // 모달이 떠 있는 동안에도 아이콘이 오류 상태를 반영한다.
-        statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "DockPeek — 권한 필요")
-        statusItem?.button?.toolTip = "DockPeek: 접근성 권한이 필요합니다"
+        statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "SmoothPeek — 권한 필요")
+        statusItem?.button?.toolTip = "SmoothPeek: 접근성 권한이 필요합니다"
 
         let alert = NSAlert()
         alert.messageText = "접근성 권한이 필요합니다"
-        alert.informativeText = "DockPeek가 Dock 이벤트를 감지하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 DockPeek를 허용한 후 앱을 재시작해 주세요."
+        alert.informativeText = "SmoothPeek가 Dock 이벤트를 감지하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 SmoothPeek를 허용한 후 앱을 재시작해 주세요."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "시스템 설정 열기")
         alert.addButton(withTitle: "나중에")

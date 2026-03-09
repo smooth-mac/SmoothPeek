@@ -1,4 +1,4 @@
-# DockPeek
+# SmoothPeek
 
 macOS에서 Dock 아이콘에 마우스를 올리면 Windows 작업 표시줄처럼 해당 앱의 윈도우 미리보기를 보여주는 유틸리티 앱.
 
@@ -42,12 +42,12 @@ WindowActivator
 ## 프로젝트 구조
 
 ```
-DockPeek/
+SmoothPeek/
 ├── Package.swift
-├── DockPeek.entitlements          # 권한 설정
-└── Sources/DockPeek/
+├── SmoothPeek.entitlements          # 권한 설정
+└── Sources/SmoothPeek/
     ├── App/
-    │   ├── DockPeekApp.swift      # @main 진입점
+    │   ├── SmoothPeekApp.swift      # @main 진입점
     │   └── AppDelegate.swift      # 상태바 아이템, 컴포넌트 연결
     ├── Core/
     │   ├── DockMonitor.swift      # CGEventTap + AX API로 호버 감지
@@ -79,7 +79,7 @@ DockPeek/
 3. `Signing & Capabilities` 탭:
    - **App Sandbox** 체크 해제
    - **Accessibility** 추가
-4. `DockPeek.entitlements` 연결
+4. `SmoothPeek.entitlements` 연결
 5. `Info.plist`에 추가:
    ```xml
    <key>NSAccessibilityUsageDescription</key>

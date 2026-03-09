@@ -14,7 +14,25 @@
       "Bash(git add -A)",
       "Bash(git rm --cached .claude/settings.local.json)",
       "Bash(git commit:*)",
-      "Bash(swift build)"
+      "Bash(swift build)",
+      "Bash(swift build -c release)",
+      "Bash(pkill -x DockPeek)",
+      "Bash(open /Users/juholee/DockPeek/.build/release/DockPeek)",
+      "Bash(pgrep -x DockPeek)",
+      "Bash(pgrep -la DockPeek)",
+      "Bash(/Users/juholee/DockPeek/.build/debug/DockPeek)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(swift /tmp/inspect_dock.swift)",
+      "Bash(swift /tmp/test_url.swift)",
+      "Bash(pkill log)",
+      "Bash(git add Sources/DockPeek/Core/DockMonitor.swift Sources/DockPeek/UI/PreviewPanelController.swift && git commit -m \"$\\(cat <<'EOF'\nfix: correct AX URL type handling and mouse coordinate system\n\nDockMonitor:\n- kAXURLAttribute returns CFURL, not String — use CFGetTypeID check before cast\n- Remove erroneous CG→NS coordinate conversion in handleMouseMoved;\n  AXUIElement positions are in CG coordinate space \\(top-left origin\\), matching\n  CGEvent.location directly — no flip needed\n- Guard empty bundleID to avoid matching unidentified dock items\n\nPreviewPanelController:\n- Apply same CFURL type-check fix in findDockIconCenter URL matching\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/juholee/DockPeek log --oneline -10)",
+      "Bash(ls /Users/juholee/DockPeek/docs/ && git -C /Users/juholee/DockPeek log --oneline -8)",
+      "Bash(git -C /Users/juholee/DockPeek add Sources/DockPeek/App/AppDelegate.swift Sources/DockPeek/Core/WindowActivator.swift Sources/DockPeek/Core/ThumbnailGenerator.swift && git -C /Users/juholee/DockPeek commit -m \"$\\(cat <<'EOF'\nfix: apply remaining Phase 1 QA recommendations\n\n- ISSUE-06: move status bar icon update before runModal\\(\\) in showPermissionAlert\n  so the warning icon is visible while the modal is displayed\n- ISSUE-02: strengthen title-fallback comments in matchesWindow\\(_:target:\\)\n  documenting the invariant that target.title is never empty and that\n  returning true when axTitle is empty is intentional\n- INFO: correct ThumbnailGenerator header comment macOS 13+ -> macOS 14+\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/juholee/DockPeek diff --stat HEAD)",
+      "Bash(git -C /Users/juholee/DockPeek status)",
+      "Bash(git add Sources/DockPeek/App/AppDelegate.swift Sources/DockPeek/App/AppSettings.swift Sources/DockPeek/Core/DockMonitor.swift Sources/DockPeek/Core/ThumbnailGenerator.swift Sources/DockPeek/UI/SettingsView.swift Sources/DockPeek/UI/WindowThumbnailView.swift && git commit -m \"$\\(cat <<'EOF'\nfix: resolve Phase 2 QA issues \\(P2-04, P2-02, P2-05, P2-06\\)\n\nP2-04 [HIGH] WindowThumbnailView: thumbSize와 LazyVGrid GridItem 너비를\nAppSettings.shared.thumbnailWidth/Height에서 읽도록 수정.\n설정 변경이 즉시 렌더링에 반영되며, .task\\(id: thumbSize\\)로 크기 변경 시\n썸네일도 자동 재캡처된다.\n\nP2-02 [MEDIUM] ThumbnailGenerator: captureWithSCKit에서 SCShareableContent\n목록에 해당 windowID가 없을 때 캐시를 즉시 무효화\\(nil\\)한 뒤 CGWindow fallback.\n다음 호출 시 최신 목록으로 재조회하여 SCKit 품질을 복구한다.\n\nP2-05 [MEDIUM] AppSettings: launchAtLogin 등록 실패 시 launchAtLogin = false\n롤백 + lastLaunchAtLoginError: String? 프로퍼티 노출.\nSettingsView: 에러가 있으면 토글 아래에 빨간 경고 텍스트 표시.\n\nP2-06 [LOW] AppDelegate: openSettings에서 settingsWindow != nil 체크 시\nisMiniaturized 상태도 고려 — 최소화된 경우 deminiaturize 후 makeKeyAndOrderFront.\n\nINFO AppSettings.Keys: private → internal 승격해 DockMonitor와 공유.\nINFO DockMonitor: \"hoverDelay\" 문자열 리터럴 → AppSettings.Keys.hoverDelay,\n기본값 0.4 하드코딩 → AppSettings.Defaults.hoverDelay로 교체.\nINFO SettingsView: @StateObject → @ObservedObject \\(싱글톤은 뷰가 소유 안 함\\).\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git add Sources/DockPeek/Core/DockMonitor.swift Sources/DockPeek/UI/PreviewPanelController.swift Sources/DockPeek/App/AppDelegate.swift && git commit -m \"$\\(cat <<'EOF'\nfix: keep preview panel visible when mouse moves onto it\n\nDockMonitor: add isMouseOverPanel callback — skip scheduleHoverEnd\\(\\)\nwhen the pointer is over the preview panel\nPreviewPanelController: add containsMouse\\(at:\\) converting CG→NS coords\nAppDelegate: wire isMouseOverPanel to previewController.containsMouse\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

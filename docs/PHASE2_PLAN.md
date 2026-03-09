@@ -1,7 +1,7 @@
-# DockPeek Phase 2 — 기능 확장 계획서
+# SmoothPeek Phase 2 — 기능 확장 계획서
 
 **작성일:** 2026-03-09
-**작성자:** DockPeek PM
+**작성자:** SmoothPeek PM
 **기준 커밋:** adbe04f (fix: correct AX URL type handling and mouse coordinate system)
 **목표:** 사용성 및 코드 완성도 향상
 
@@ -79,7 +79,7 @@
 ### P2-6: DockAXHelper 공통 유틸 추출
 **담당**: swift-engineer
 **예상 소요**: 2-3시간
-**신규 파일**: `Sources/DockPeek/Core/DockAXHelper.swift`
+**신규 파일**: `Sources/SmoothPeek/Core/DockAXHelper.swift`
 **수정 파일**: DockMonitor.swift, PreviewPanelController.swift
 
 **배경**: 현재 `DockMonitor.axFrame(of:)` 와 `PreviewPanelController.findDockIconCenter(for:)` 가 거의 동일한 AX 탐색 코드를 반복한다. DockMonitor의 `findHoveredDockApp()` 와 PreviewPanelController의 `findDockIconCenter()` 도 Dock AXUIElement → children → list → items 순회 패턴이 중복된다.
@@ -110,7 +110,7 @@ enum DockAXHelper {
 ### P2-5: ThumbnailGenerator 성능 개선
 **담당**: swift-engineer
 **예상 소요**: 2시간
-**수정 파일**: Sources/DockPeek/Core/ThumbnailGenerator.swift
+**수정 파일**: Sources/SmoothPeek/Core/ThumbnailGenerator.swift
 
 **배경**: 현재 매 캡처 시마다 `SCShareableContent.excludingDesktopWindows(...)` 를 호출해 전체 윈도우 목록을 재조회한다. 캐시도 상한선이 없어 장시간 실행 시 메모리 무제한 증가 가능성이 있다.
 
@@ -160,7 +160,7 @@ enum DockAXHelper {
 ### P2-3: 패널 Fade In/Out 애니메이션
 **담당**: swift-engineer
 **예상 소요**: 1-2시간
-**수정 파일**: Sources/DockPeek/UI/PreviewPanelController.swift
+**수정 파일**: Sources/SmoothPeek/UI/PreviewPanelController.swift
 
 **배경**: 현재 `orderFront` / `orderOut` 직접 호출로 패널이 즉시 나타났다 사라진다. 애니메이션이 없어 시각적으로 거칠다.
 
@@ -220,7 +220,7 @@ NSAnimationContext.runAnimationGroup({ ctx in
 ### P2-4: 환경설정 패널 (UserDefaults 기반)
 **담당**: swift-engineer
 **예상 소요**: 4-6시간
-**신규 파일**: `Sources/DockPeek/UI/PreferencesView.swift`, `Sources/DockPeek/App/PreferencesManager.swift`
+**신규 파일**: `Sources/SmoothPeek/UI/PreferencesView.swift`, `Sources/SmoothPeek/App/PreferencesManager.swift`
 **수정 파일**: AppDelegate.swift, DockMonitor.swift, PreviewPanelController.swift
 
 **배경**: 호버 딜레이(0.4초), 썸네일 크기(200×130), 패널 갱신 주기 등이 하드코딩되어 있다.
@@ -290,20 +290,20 @@ NSAnimationContext.runAnimationGroup({ ctx in
 
 **작업 1 — P2-PRE: 잔여 QA 수정 (3개 항목)**
 
-파일: `/Users/juholee/DockPeek/Sources/DockPeek/App/AppDelegate.swift`
+파일: `/Users/juholee/SmoothPeek/Sources/SmoothPeek/App/AppDelegate.swift`
 - `showPermissionAlert()` 함수 (64-71번 줄): 상태바 아이콘 변경 코드(69-71번 줄)를 `alert.runModal()` 호출(64번 줄) 이전으로 이동
 
-파일: `/Users/juholee/DockPeek/Sources/DockPeek/Core/WindowActivator.swift`
+파일: `/Users/juholee/SmoothPeek/Sources/SmoothPeek/Core/WindowActivator.swift`
 - `matchesWindow()` 함수 (64-73번 줄): title fallback 로직에 주석 보강
   - `target.title`이 `WindowEnumerator`에서 항상 앱 이름 이상의 값을 가짐을 명시
   - 두 타이틀 모두 비어있는 edge case에서 `return true`가 의도적임을 명시
 
-파일: `/Users/juholee/DockPeek/Sources/DockPeek/Core/ThumbnailGenerator.swift`
+파일: `/Users/juholee/SmoothPeek/Sources/SmoothPeek/Core/ThumbnailGenerator.swift`
 - 6번 줄 주석: `macOS 13+` → `macOS 14+` 변경
 
 **작업 2 — P2-6: DockAXHelper 추출**
 
-신규 파일: `/Users/juholee/DockPeek/Sources/DockPeek/Core/DockAXHelper.swift`
+신규 파일: `/Users/juholee/SmoothPeek/Sources/SmoothPeek/Core/DockAXHelper.swift`
 - `DockMonitor.axFrame(of:)` 와 동일한 로직을 `DockAXHelper.axFrame(of:)` 정적 메서드로 추출
 - Dock 아이콘 AX 탐색 공통 로직(URL → bundleID 매칭) 추출
 - `DockMonitor.swift` 와 `PreviewPanelController.swift` 에서 중복 코드를 `DockAXHelper` 호출로 교체
