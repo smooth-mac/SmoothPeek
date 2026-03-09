@@ -102,9 +102,10 @@ final class DockMonitor {
         lastHoveredBundleID = bundleID
 
         // AppSettings.shared는 @MainActor 격리이므로 CGEventTap 콜백(메인 런루프)에서
-        // 직접 접근하지 않고, 같은 UserDefaults 키를 통해 값을 읽는다.
-        let delay = UserDefaults.standard.double(forKey: "hoverDelay")
-        let hoverDelay = delay > 0 ? delay : 0.4
+        // 직접 접근하지 않고, 동일 UserDefaults 키를 통해 값을 읽는다.
+        // 키 이름은 AppSettings.Keys.hoverDelay를 공유해 문자열 불일치를 방지한다.
+        let delay = UserDefaults.standard.double(forKey: AppSettings.Keys.hoverDelay)
+        let hoverDelay = delay > 0 ? delay : AppSettings.Defaults.hoverDelay
         hoverTimer = Timer.scheduledTimer(withTimeInterval: hoverDelay, repeats: false) { [weak self] _ in
             self?.onAppHovered?(bundleID, hoveredApp)
         }

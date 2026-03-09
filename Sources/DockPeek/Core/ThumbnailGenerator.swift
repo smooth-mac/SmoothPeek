@@ -99,7 +99,11 @@ final class ThumbnailGenerator {
             let content = try await shareableContent()
 
             guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
-                return captureWithCGWindow(windowID: windowID, size: size) // fallback
+                // 캐시된 SCShareableContent에 해당 윈도우가 없음 — 새로 열린 윈도우일 수 있다.
+                // 캐시를 무효화하면 다음 호출 시 최신 목록으로 재조회하여 SCKit 품질을 즉시 복구한다.
+                cachedShareableContent = nil
+                shareableContentTimestamp = nil
+                return captureWithCGWindow(windowID: windowID, size: size)
             }
 
             let filter = SCContentFilter(desktopIndependentWindow: scWindow)

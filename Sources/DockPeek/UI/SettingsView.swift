@@ -2,12 +2,13 @@ import SwiftUI
 
 /// 앱 환경설정 SwiftUI 화면.
 ///
-/// AppSettings.shared를 StateObject로 관찰하며,
+/// AppSettings.shared를 ObservedObject로 관찰한다.
+/// 싱글톤의 소유권은 뷰 외부(AppSettings 자체)에 있으므로 @ObservedObject가 적절하다.
 /// Slider + TextField 조합으로 수치 값을 조정하고
 /// Toggle로 로그인 시 자동 실행을 제어한다.
 struct SettingsView: View {
 
-    @StateObject private var settings = AppSettings.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
         Form {
@@ -60,6 +61,13 @@ struct SettingsView: View {
     private var loginSection: some View {
         Section("시스템") {
             Toggle("로그인 시 자동 실행", isOn: $settings.launchAtLogin)
+
+            // SMAppService 등록 실패 시 토글 아래에 경고 메시지를 표시한다.
+            if let errorMessage = settings.lastLaunchAtLoginError {
+                Text("자동 실행 설정 실패: \(errorMessage)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+            }
         }
     }
 

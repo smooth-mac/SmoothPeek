@@ -7,6 +7,8 @@ struct PreviewPanelView: View {
     let windows: [WindowInfo]
     let onSelect: (WindowInfo) -> Void
 
+    @ObservedObject private var settings = AppSettings.shared
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 앱 이름 헤더
@@ -22,10 +24,13 @@ struct PreviewPanelView: View {
             }
             .padding(.horizontal, 12)
 
-            // 썸네일 그리드
+            // 썸네일 그리드 — 열 너비는 AppSettings.thumbnailWidth를 따른다
             let columns = min(windows.count, 4)
             LazyVGrid(
-                columns: Array(repeating: GridItem(.fixed(200), spacing: 12), count: columns),
+                columns: Array(
+                    repeating: GridItem(.fixed(settings.thumbnailWidth), spacing: 12),
+                    count: columns
+                ),
                 spacing: 12
             ) {
                 ForEach(windows) { window in
@@ -57,7 +62,14 @@ struct WindowThumbnailCard: View {
     @State private var thumbnail: NSImage?
     @State private var isHovered = false
 
-    private let thumbSize = CGSize(width: 200, height: 120)
+    @ObservedObject private var settings = AppSettings.shared
+
+    /// 환경설정에서 읽은 썸네일 크기.
+    /// 높이는 thumbnailHeight를 사용하되, 카드 레이아웃에서 제목 텍스트 공간을 고려해
+    /// 이미지 영역 높이로 직접 활용한다.
+    private var thumbSize: CGSize {
+        CGSize(width: settings.thumbnailWidth, height: settings.thumbnailHeight)
+    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -106,7 +118,7 @@ struct WindowThumbnailCard: View {
         .onTapGesture {
             onSelect(window)
         }
-        .task {
+        .task(id: thumbSize) {
             thumbnail = await ThumbnailGenerator.shared.thumbnail(for: window, size: thumbSize)
         }
     }

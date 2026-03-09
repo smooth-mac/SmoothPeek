@@ -55,9 +55,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        // 기존 윈도우가 살아 있으면 앞으로 가져온다
-        if let existing = settingsWindow, existing.isVisible {
+        // 기존 윈도우가 살아 있으면 앞으로 가져온다.
+        // 최소화 상태인 경우 isVisible == false 이므로 isMiniaturized도 별도로 확인한다.
+        if let existing = settingsWindow {
             NSApp.activate(ignoringOtherApps: true)
+            if existing.isMiniaturized {
+                existing.deminiaturize(nil)
+            }
             existing.makeKeyAndOrderFront(nil)
             return
         }

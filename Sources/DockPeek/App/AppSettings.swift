@@ -14,7 +14,8 @@ final class AppSettings: ObservableObject {
 
     // MARK: - Keys
 
-    private enum Keys {
+    /// UserDefaults 키 상수. DockMonitor 등 비-MainActor 컨텍스트에서도 참조할 수 있도록 internal.
+    enum Keys {
         static let hoverDelay      = "hoverDelay"
         static let thumbnailWidth  = "thumbnailWidth"
         static let thumbnailHeight = "thumbnailHeight"
@@ -50,6 +51,10 @@ final class AppSettings: ObservableObject {
         didSet { applyLaunchAtLogin(launchAtLogin) }
     }
 
+    /// launchAtLogin 등록/해제 실패 시 설정되는 에러 메시지.
+    /// 다음 성공 시 또는 사용자가 토글을 다시 조작할 때 nil로 초기화된다.
+    @Published var lastLaunchAtLoginError: String?
+
     // MARK: - Init
 
     private init() {}
@@ -67,9 +72,11 @@ final class AppSettings: ObservableObject {
     // MARK: - SMAppService
 
     /// launchAtLogin 변경을 SMAppService에 반영한다.
-    /// 실패해도 앱 크래시 없이 에러 로그만 출력한다.
+    /// 등록 실패 시 `launchAtLogin`을 `false`로 롤백하고 `lastLaunchAtLoginError`에 메시지를 기록한다.
     private func applyLaunchAtLogin(_ enabled: Bool) {
         let service = SMAppService.mainApp
+        // 이전 에러는 새 시도 시작과 동시에 초기화한다.
+        lastLaunchAtLoginError = nil
         do {
             if enabled {
                 try service.register()
@@ -77,7 +84,14 @@ final class AppSettings: ObservableObject {
                 try service.unregister()
             }
         } catch {
-            print("[AppSettings] launchAtLogin 변경 실패: \(error.localizedDescription)")
+            let message = error.localizedDescription
+            print("[AppSettings] launchAtLogin 변경 실패: \(message)")
+            if enabled {
+                // 등록 실패 — UI가 ON으로 남지 않도록 롤백한다.
+                // didSet 재진입 방지를 위해 @AppStorage 값을 직접 덮어쓴다.
+                launchAtLogin = false
+                lastLaunchAtLoginError = message
+            }
         }
     }
 }
