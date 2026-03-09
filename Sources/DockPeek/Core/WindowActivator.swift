@@ -8,10 +8,11 @@ enum WindowActivator {
         if window.isMinimized {
             restoreAndActivate(window: window, app: app)
         } else {
+            // raise를 먼저 수행한 뒤 activate한다.
+            // activate를 먼저 하면 OS가 마지막 활성 윈도우를 최전면으로 올리고,
+            // 이후 raise가 덮어쓰기 어려운 경쟁 조건이 생긴다.
+            raiseWindow(window: window, pid: app.processIdentifier)
             app.activate(options: [.activateIgnoringOtherApps])
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                raiseWindow(window: window, pid: app.processIdentifier)
-            }
         }
     }
 
@@ -81,6 +82,9 @@ enum WindowActivator {
             if matchesWindow(axWindow, target: window) {
                 AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+                // 앱 엘리먼트의 포커스 윈도우를 명시적으로 지정해
+                // activate() 시 이 윈도우가 최전면으로 오도록 한다.
+                AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
                 break
             }
         }
