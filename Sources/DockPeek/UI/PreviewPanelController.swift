@@ -144,50 +144,23 @@ final class PreviewPanelController {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    /// Dock 아이콘의 화면 중앙 좌표를 AXUIElement로 추출 (NS 좌표계)
+    /// Dock 아이콘의 화면 중앙 좌표를 AXUIElement로 추출.
+    ///
+    /// 반환값은 AX 좌표계 그대로이며 `setFrameOrigin`(NS 좌표계)에 직접 사용된다.
+    /// AX position은 NS 좌표계와 동일 원점이므로 별도 변환이 불필요하다.
     private func findDockIconCenter(for app: NSRunningApplication) -> CGPoint? {
         guard let dockApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.bundleIdentifier == "com.apple.dock"
         }) else { return nil }
 
+        let bundleID = app.bundleIdentifier ?? ""
+        guard !bundleID.isEmpty else { return nil }
+
         let dockElement = AXUIElementCreateApplication(dockApp.processIdentifier)
-        var childrenRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(dockElement, kAXChildrenAttribute as CFString, &childrenRef) == .success,
-              let children = childrenRef as? [AXUIElement] else { return nil }
+        guard let iconElement = DockAXHelper.dockIconElement(for: bundleID, in: dockElement),
+              let frame = DockAXHelper.axFrame(of: iconElement) else { return nil }
 
-        for child in children {
-            var roleRef: CFTypeRef?
-            AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleRef)
-            guard (roleRef as? String) == kAXListRole as String else { continue }
-
-            var itemsRef: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(child, kAXChildrenAttribute as CFString, &itemsRef) == .success,
-                  let items = itemsRef as? [AXUIElement] else { continue }
-
-            for item in items {
-                var urlRef: CFTypeRef?
-                AXUIElementCopyAttributeValue(item, kAXURLAttribute as CFString, &urlRef)
-                guard let urlRef,
-                      CFGetTypeID(urlRef) == CFURLGetTypeID(),
-                      let bundleID = Bundle(url: urlRef as! CFURL as URL)?.bundleIdentifier,
-                      bundleID == app.bundleIdentifier else { continue }
-
-                var posRef: CFTypeRef?
-                var sizeRef: CFTypeRef?
-                guard AXUIElementCopyAttributeValue(item, kAXPositionAttribute as CFString, &posRef) == .success,
-                      AXUIElementCopyAttributeValue(item, kAXSizeAttribute as CFString, &sizeRef) == .success,
-                      let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
-                      let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { continue }
-
-                var pos = CGPoint.zero
-                var size = CGSize.zero
-                AXValueGetValue(posVal as! AXValue, .cgPoint, &pos)   // safe: type ID checked
-                AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)  // safe: type ID checked
-
-                return CGPoint(x: pos.x + size.width / 2, y: pos.y + size.height / 2)
-            }
-        }
-        return nil
+        return CGPoint(x: frame.midX, y: frame.midY)
     }
 }
 

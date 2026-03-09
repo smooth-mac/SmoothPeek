@@ -144,7 +144,7 @@ final class DockMonitor {
                   let items = itemsRef as? [AXUIElement] else { continue }
 
             for item in items {
-                guard let frame = axFrame(of: item),
+                guard let frame = DockAXHelper.axFrame(of: item),
                       frame.contains(point) else { continue }
 
                 return runningApp(for: item)
@@ -153,37 +153,10 @@ final class DockMonitor {
         return nil
     }
 
-    /// AXUIElement의 프레임 반환 (CG 좌표계 — AX API 좌표는 좌상단 원점)
-    private func axFrame(of element: AXUIElement) -> NSRect? {
-        var posRef: CFTypeRef?
-        var sizeRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
-              let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
-              let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { return nil }
-
-        var pos = CGPoint.zero
-        var size = CGSize.zero
-        AXValueGetValue(posVal as! AXValue, .cgPoint, &pos)   // safe: type ID checked
-        AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)  // safe: type ID checked
-
-        return NSRect(origin: pos, size: size)
-    }
-
-    /// AXUIElement의 URL 속성에서 번들 ID를 추출해 실행 중인 앱 반환
-    ///
-    /// AXURL은 CFURL 타입으로 반환된다 (String 아님).
+    /// AXUIElement의 URL 속성에서 번들 ID를 추출해 실행 중인 앱 반환.
+    /// 번들 ID 추출은 DockAXHelper.bundleID(of:)에 위임한다.
     private func runningApp(for item: AXUIElement) -> NSRunningApplication? {
-        var urlRef: CFTypeRef?
-        AXUIElementCopyAttributeValue(item, kAXURLAttribute as CFString, &urlRef)
-
-        guard let urlRef,
-              CFGetTypeID(urlRef) == CFURLGetTypeID() else { return nil }
-
-        let url = urlRef as! CFURL as URL  // safe: type ID checked
-        let bundleID = Bundle(url: url)?.bundleIdentifier ?? ""
-        guard !bundleID.isEmpty else { return nil }
-
+        guard let bundleID = DockAXHelper.bundleID(of: item) else { return nil }
         return NSWorkspace.shared.runningApplications.first {
             $0.bundleIdentifier == bundleID
         }
