@@ -64,11 +64,22 @@ struct WindowThumbnailCard: View {
 
     @ObservedObject private var settings = AppSettings.shared
 
-    /// 환경설정에서 읽은 썸네일 크기.
-    /// 높이는 thumbnailHeight를 사용하되, 카드 레이아웃에서 제목 텍스트 공간을 고려해
-    /// 이미지 영역 높이로 직접 활용한다.
+    /// 창의 실제 비율을 유지하면서 maxWidth × maxHeight 안에 맞춘 썸네일 크기.
+    ///
+    /// 창이 세로로 길거나 작은 경우에도 빈 공간 없이 창 내용이 꽉 차도록 한다.
+    /// 최소화 윈도우 또는 frame 정보가 없으면 기본값(maxWidth × maxHeight)을 사용한다.
     private var thumbSize: CGSize {
-        CGSize(width: settings.thumbnailWidth, height: settings.thumbnailHeight)
+        let maxW = settings.thumbnailWidth
+        let maxH = settings.thumbnailHeight
+        guard !window.isMinimized,
+              window.frame.width > 0, window.frame.height > 0 else {
+            return CGSize(width: maxW, height: maxH)
+        }
+        let scale = min(maxW / window.frame.width, maxH / window.frame.height)
+        return CGSize(
+            width: max(1, (window.frame.width * scale).rounded()),
+            height: max(1, (window.frame.height * scale).rounded())
+        )
     }
 
     var body: some View {
@@ -86,9 +97,8 @@ struct WindowThumbnailCard: View {
                 } else if let thumbnail {
                     Image(nsImage: thumbnail)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: .fit)
                         .frame(width: thumbSize.width, height: thumbSize.height)
-                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     ProgressView()
