@@ -33,6 +33,9 @@ final class ThumbnailGenerator {
     // MARK: - Public API
 
     func thumbnail(for window: WindowInfo, size: CGSize) async -> NSImage? {
+        // 최소화 윈도우는 캡처 불가 — WindowThumbnailCard에서 별도 UI 처리
+        if window.isMinimized { return nil }
+
         // 썸네일 캐시 확인
         if let entry = cache[window.id], Date().timeIntervalSince(entry.timestamp) < cacheTTL {
             return entry.image

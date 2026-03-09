@@ -29,7 +29,7 @@ struct PreviewPanelView: View {
                 spacing: 12
             ) {
                 ForEach(windows) { window in
-                    WindowThumbnailCard(window: window, onSelect: onSelect)
+                    WindowThumbnailCard(window: window, app: app, onSelect: onSelect)
                 }
             }
             .padding([.horizontal, .bottom], 12)
@@ -51,6 +51,7 @@ struct PreviewPanelView: View {
 
 struct WindowThumbnailCard: View {
     let window: WindowInfo
+    let app: NSRunningApplication
     let onSelect: (WindowInfo) -> Void
 
     @State private var thumbnail: NSImage?
@@ -60,13 +61,17 @@ struct WindowThumbnailCard: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // 썸네일 이미지
+            // 썸네일 영역
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.white.opacity(0.1))
                     .frame(width: thumbSize.width, height: thumbSize.height)
 
-                if let thumbnail {
+                if window.isMinimized {
+                    MinimizedPlaceholder(app: app)
+                        .frame(width: thumbSize.width, height: thumbSize.height)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else if let thumbnail {
                     Image(nsImage: thumbnail)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -107,20 +112,67 @@ struct WindowThumbnailCard: View {
     }
 }
 
+// MARK: - 최소화 윈도우 플레이스홀더
+
+/// 최소화 윈도우에 표시하는 뷰: 앱 아이콘 + "최소화됨" 뱃지
+private struct MinimizedPlaceholder: View {
+    let app: NSRunningApplication
+
+    var body: some View {
+        ZStack {
+            // 배경 — 약간 어두운 톤으로 일반 썸네일과 시각적 구분
+            Color.black.opacity(0.25)
+
+            VStack(spacing: 8) {
+                if let icon = app.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 48, height: 48)
+                        .shadow(color: .black.opacity(0.3), radius: 4)
+                }
+
+                Text("최소화됨")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.15))
+                    )
+            }
+        }
+    }
+}
+
 // MARK: - Preview
 
 #if DEBUG
 struct PreviewPanelView_Previews: PreviewProvider {
     static var previews: some View {
-        let dummyWindows = (1...3).map { i in
+        let dummyWindows = [
             WindowInfo(
-                id: CGWindowID(i),
-                title: "Document \(i).swift",
+                id: CGWindowID(1),
+                title: "Document 1.swift",
                 frame: CGRect(x: 0, y: 0, width: 800, height: 600),
-                isOnScreen: true,
+                isMinimized: false,
                 pid: 1234
-            )
-        }
+            ),
+            WindowInfo(
+                id: CGWindowID(2),
+                title: "Document 2.swift",
+                frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+                isMinimized: true,
+                pid: 1234
+            ),
+            WindowInfo(
+                id: CGWindowID(3),
+                title: "Document 3.swift",
+                frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+                isMinimized: false,
+                pid: 1234
+            ),
+        ]
         PreviewPanelView(
             app: NSRunningApplication.current,
             windows: dummyWindows,

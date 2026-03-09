@@ -2,14 +2,73 @@ import Cocoa
 
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
-    /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동
+    /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동.
+    /// 최소화 윈도우인 경우 복원 후 활성화한다.
     static func activate(window: WindowInfo, app: NSRunningApplication) {
-        app.activate(options: [.activateIgnoringOtherApps])
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            raiseWindow(window: window, pid: app.processIdentifier)
+        if window.isMinimized {
+            restoreAndActivate(window: window, app: app)
+        } else {
+            app.activate(options: [.activateIgnoringOtherApps])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                raiseWindow(window: window, pid: app.processIdentifier)
+            }
         }
     }
+
+    // MARK: - Minimized Window Restoration
+
+    private static func restoreAndActivate(window: WindowInfo, app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        let appElement = AXUIElementCreateApplication(pid)
+
+        var windowsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
+              let axWindows = windowsRef as? [AXUIElement] else {
+            // AX 권한 없이 복원 불가 — 앱만 활성화
+            app.activate(options: [.activateIgnoringOtherApps])
+            return
+        }
+
+        // 최소화 윈도우는 position/size 정보가 없으므로 title로만 매칭한다.
+        // 동일 title 윈도우가 여러 개인 경우 첫 번째 최소화 상태 항목을 사용한다.
+        for axWindow in axWindows {
+            guard isMinimizedAXWindow(axWindow) else { continue }
+            guard titleMatches(axWindow, target: window.title) else { continue }
+
+            // kAXMinimizedAttribute = false 로 복원
+            AXUIElementSetAttributeValue(axWindow, kAXMinimizedAttribute as CFString, false as CFTypeRef)
+
+            // 복원 후 앱 활성화 + raise
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                app.activate(options: [.activateIgnoringOtherApps])
+                AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
+                AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+            }
+            return
+        }
+
+        // 매칭 실패 — 앱만 활성화
+        app.activate(options: [.activateIgnoringOtherApps])
+    }
+
+    private static func isMinimizedAXWindow(_ element: AXUIElement) -> Bool {
+        var minimizedRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXMinimizedAttribute as CFString, &minimizedRef) == .success,
+              let value = minimizedRef as? Bool else { return false }
+        return value
+    }
+
+    private static func titleMatches(_ element: AXUIElement, target: String) -> Bool {
+        var titleRef: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
+        guard let axTitle = titleRef as? String, !axTitle.isEmpty else {
+            // 제목 없는 윈도우는 일단 매칭 허용 (첫 번째 최소화 윈도우가 선택됨)
+            return true
+        }
+        return axTitle == target
+    }
+
+    // MARK: - On-Screen Window Raise
 
     private static func raiseWindow(window: WindowInfo, pid: pid_t) {
         let appElement = AXUIElementCreateApplication(pid)
