@@ -7,6 +7,17 @@ final class PreviewPanelController {
     private var panel: NSPanel?
     private var currentApp: NSRunningApplication?
 
+    // fade out 애니메이션이 진행 중임을 나타내는 플래그
+    // show()가 들어오면 이 플래그를 보고 진행 중인 fade out을 취소한다
+    private var isFadingOut = false
+
+    // MARK: - Animation Constants
+
+    private enum Animation {
+        static let fadeInDuration: TimeInterval = 0.15
+        static let fadeOutDuration: TimeInterval = 0.10
+    }
+
     // MARK: - Show
 
     func show(for app: NSRunningApplication, windows: [WindowInfo]) {
@@ -26,20 +37,58 @@ final class PreviewPanelController {
 
         guard let panel else { return }
 
+        // fade out 진행 중이면 즉시 중단하고 alphaValue를 0으로 초기화한 뒤 fade in 시작
+        // NSAnimationContext 기반 애니메이션은 isFadingOut 플래그 리셋만으로 중단 처리한다
+        if isFadingOut {
+            isFadingOut = false
+            panel.alphaValue = 0
+        }
+
         let host = NSHostingController(rootView: rootView)
         host.view.frame = CGRect(origin: .zero, size: preferredSize(windowCount: windows.count))
 
         panel.contentViewController = host
         panel.setContentSize(host.view.frame.size)
         positionPanel(panel, near: app)
+
+        // alphaValue를 0으로 리셋한 뒤 orderFront — 이후 easeOut fade in
+        panel.alphaValue = 0
         panel.orderFront(nil)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Animation.fadeInDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+        }
     }
 
     // MARK: - Hide
 
     func hide() {
-        panel?.orderOut(nil)
+        guard let panel, panel.isVisible else {
+            currentApp = nil
+            return
+        }
+
         currentApp = nil
+        isFadingOut = true
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Animation.fadeOutDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            // completionHandler는 Sendable 컨텍스트로 취급되므로
+            // @MainActor 프로퍼티 접근을 MainActor.run 안에서 수행한다
+            Task { @MainActor [weak self] in
+                guard let self, self.isFadingOut else {
+                    // show()가 중간에 호출되어 플래그가 리셋된 경우 — orderOut 하지 않음
+                    return
+                }
+                self.isFadingOut = false
+                panel.orderOut(nil)
+            }
+        }
     }
 
     // MARK: - Panel Factory
@@ -57,6 +106,8 @@ final class PreviewPanelController {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary]
         panel.ignoresMouseEvents = false
+        // fade in/out 애니메이션 시작점: 완전 투명 상태에서 시작
+        panel.alphaValue = 0
         return panel
     }
 
