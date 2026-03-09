@@ -11,6 +11,9 @@ final class DockMonitor {
     var onAppHovered: ((String?, NSRunningApplication?) -> Void)?
     var onHoverEnded: (() -> Void)?
     var onPermissionError: (() -> Void)?
+    /// 마우스 포인터(CG 좌표)가 미리보기 패널 위에 있으면 true를 반환하는 콜백.
+    /// 패널 위에 있는 동안은 hoverEnd 타이머를 시작하지 않는다.
+    var isMouseOverPanel: ((CGPoint) -> Bool)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -91,6 +94,8 @@ final class DockMonitor {
         // AXUIElement 좌표계는 CG 좌표계(좌상단 원점, y 아래로)와 동일하다.
         // 마우스 이벤트도 CG 좌표이므로 변환 없이 직접 비교한다.
         guard let hoveredApp = findHoveredDockApp(at: point) else {
+            // 마우스가 미리보기 패널 위에 있으면 패널을 숨기지 않는다.
+            if isMouseOverPanel?(point) == true { return }
             scheduleHoverEnd()
             return
         }

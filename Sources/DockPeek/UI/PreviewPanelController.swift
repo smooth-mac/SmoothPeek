@@ -62,6 +62,20 @@ final class PreviewPanelController {
         }
     }
 
+    // MARK: - Hit Test
+
+    /// 마우스 포인터가 현재 패널 위에 있는지 확인한다.
+    ///
+    /// CGEvent 좌표(좌상단 원점)를 NS 좌표(좌하단 원점)로 변환한 뒤
+    /// NSPanel.frame과 비교한다. primary screen의 높이를 Y 축 기준으로 사용한다.
+    func containsMouse(at cgPoint: CGPoint) -> Bool {
+        guard let panel, panel.isVisible else { return false }
+        let screenHeight = NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
+                        ?? NSScreen.main?.frame.height ?? 0
+        let nsPoint = NSPoint(x: cgPoint.x, y: screenHeight - cgPoint.y)
+        return panel.frame.contains(nsPoint)
+    }
+
     // MARK: - Hide
 
     func hide() {
