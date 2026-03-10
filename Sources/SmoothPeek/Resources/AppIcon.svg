@@ -1,0 +1,311 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient: deep navy to indigo-violet, macOS Big Sur era -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1C2B4A;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2D2066;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1A0E3B;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Subtle inner glow on background -->
+    <radialGradient id="bgGlow" cx="50%" cy="38%" r="55%">
+      <stop offset="0%" style="stop-color:#5B3FC4;stop-opacity:0.45" />
+      <stop offset="100%" style="stop-color:#5B3FC4;stop-opacity:0" />
+    </radialGradient>
+
+    <!-- Glass card base gradient (frosted glass look) -->
+    <linearGradient id="glassBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.22" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.06" />
+    </linearGradient>
+
+    <!-- Glass card highlight (top edge shimmer) -->
+    <linearGradient id="glassShimmer" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.55" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+
+    <!-- Thumbnail screen gradient (simulates a real window content) -->
+    <linearGradient id="thumbGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8ECF4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C8D0E0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="thumbGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#EAE4F5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#CABDE8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="thumbGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E4F0EF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B8D8D5;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Dock bar gradient -->
+    <linearGradient id="dockGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.18" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.06" />
+    </linearGradient>
+
+    <!-- Accent glow under preview panel (bloom) -->
+    <radialGradient id="panelBloom" cx="50%" cy="100%" r="50%">
+      <stop offset="0%" style="stop-color:#7B5CF5;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#7B5CF5;stop-opacity:0" />
+    </radialGradient>
+
+    <!-- Drop shadow filter for the preview panel -->
+    <filter id="panelShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="18" flood-color="#000000" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+
+    <!-- Soft shadow for dock icons -->
+    <filter id="iconShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+
+    <!-- Glow effect for accent elements -->
+    <filter id="accentGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Clip for rounded square icon boundary -->
+    <clipPath id="iconClip">
+      <rect x="0" y="0" width="1024" height="1024" rx="225" ry="225"/>
+    </clipPath>
+
+    <!-- Clip for glass card -->
+    <clipPath id="glassClip">
+      <rect x="88" y="248" width="848" height="490" rx="22" ry="22"/>
+    </clipPath>
+
+    <!-- Thumbnail clipping paths -->
+    <clipPath id="thumb1Clip">
+      <rect x="116" y="288" width="234" height="148" rx="8" ry="8"/>
+    </clipPath>
+    <clipPath id="thumb2Clip">
+      <rect x="394" y="276" width="236" height="160" rx="8" ry="8"/>
+    </clipPath>
+    <clipPath id="thumb3Clip">
+      <rect x="674" y="288" width="234" height="148" rx="8" ry="8"/>
+    </clipPath>
+  </defs>
+
+  <!-- === LAYER 0: Icon boundary clip === -->
+  <g clip-path="url(#iconClip)">
+
+    <!-- === LAYER 1: Background === -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bgGrad)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bgGlow)"/>
+
+    <!-- Background subtle grid/noise texture suggestion (soft horizontal lines) -->
+    <rect x="0" y="0" width="1024" height="1024" fill="none"
+          stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.03"
+          stroke-dasharray="1024,0"/>
+
+    <!-- === LAYER 2: Dock bar at bottom === -->
+    <!-- Dock bar background -->
+    <rect x="112" y="800" width="800" height="90" rx="22" ry="22"
+          fill="url(#dockGrad)"
+          stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.15"
+          filter="url(#panelShadow)"/>
+
+    <!-- Dock bar top highlight line -->
+    <rect x="112" y="800" width="800" height="2" rx="1" ry="1"
+          fill="#FFFFFF" fill-opacity="0.25"/>
+
+    <!-- Dock separator dots / indicator -->
+    <circle cx="512" cy="906" r="3.5" fill="#FFFFFF" fill-opacity="0.35"/>
+
+    <!-- === LAYER 3: Dock app icons (5 icons in the dock bar) === -->
+
+    <!-- Icon 1: Blue (Safari-like) -->
+    <rect x="148" y="813" width="64" height="64" rx="14" ry="14"
+          fill="#1565C0" filter="url(#iconShadow)"/>
+    <rect x="148" y="813" width="64" height="64" rx="14" ry="14"
+          fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.2"/>
+    <!-- Simple globe shape -->
+    <circle cx="180" cy="845" r="18" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.8"/>
+    <ellipse cx="180" cy="845" rx="9" ry="18" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.6"/>
+    <line x1="162" y1="845" x2="198" y2="845" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.7"/>
+
+    <!-- Icon 2: Orange (Finder-like) -->
+    <rect x="232" y="813" width="64" height="64" rx="14" ry="14"
+          fill="#E65100" filter="url(#iconShadow)"/>
+    <rect x="232" y="813" width="64" height="64" rx="14" ry="14"
+          fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.2"/>
+    <!-- Simple folder shape -->
+    <rect x="248" y="832" width="32" height="24" rx="3" ry="3" fill="#FFFFFF" fill-opacity="0.8"/>
+    <rect x="248" y="828" width="14" height="6" rx="2" ry="2" fill="#FFFFFF" fill-opacity="0.8"/>
+
+    <!-- Icon 3: HIGHLIGHTED - SmoothPeek active app (purple accent) -->
+    <rect x="316" y="806" width="80" height="80" rx="18" ry="18"
+          fill="#5B3FC4" filter="url(#iconShadow)"/>
+    <!-- Glow ring indicating this icon is hovered -->
+    <rect x="310" y="800" width="92" height="92" rx="22" ry="22"
+          fill="none" stroke="#A78BFA" stroke-width="2.5" stroke-opacity="0.9"/>
+    <!-- Hover dot indicator below -->
+    <circle cx="356" cy="900" r="4" fill="#A78BFA" fill-opacity="0.9"/>
+    <!-- Window preview symbol inside icon -->
+    <rect x="334" y="825" width="44" height="30" rx="5" ry="5"
+          fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity="0.9"/>
+    <rect x="334" y="825" width="44" height="8" rx="5" ry="5"
+          fill="#FFFFFF" fill-opacity="0.25"/>
+
+    <!-- Icon 4: Green (Messages-like) -->
+    <rect x="416" y="813" width="64" height="64" rx="14" ry="14"
+          fill="#2E7D32" filter="url(#iconShadow)"/>
+    <rect x="416" y="813" width="64" height="64" rx="14" ry="14"
+          fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.2"/>
+    <!-- Chat bubble -->
+    <rect x="432" y="829" width="32" height="22" rx="8" ry="8" fill="#FFFFFF" fill-opacity="0.8"/>
+    <polygon points="436,851 430,860 446,851" fill="#FFFFFF" fill-opacity="0.8"/>
+
+    <!-- Icon 5: Red (Mail-like) -->
+    <rect x="500" y="813" width="64" height="64" rx="14" ry="14"
+          fill="#C62828" filter="url(#iconShadow)"/>
+    <rect x="500" y="813" width="64" height="64" rx="14" ry="14"
+          fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.2"/>
+    <!-- Envelope shape -->
+    <rect x="514" y="832" width="36" height="26" rx="3" ry="3" fill="#FFFFFF" fill-opacity="0.8"/>
+    <polyline points="514,832 532,848 550,832" fill="none" stroke="#E53935" stroke-width="2"/>
+
+    <!-- === LAYER 4: Bloom glow rising from hovered icon === -->
+    <ellipse cx="356" cy="810" rx="100" ry="40"
+             fill="#7B5CF5" fill-opacity="0.22"
+             filter="url(#panelShadow)"/>
+
+    <!-- === LAYER 5: Preview panel (glass card floating above dock) === -->
+    <!-- Panel shadow bloom -->
+    <ellipse cx="512" cy="745" rx="380" ry="30"
+             fill="#5B3FC4" fill-opacity="0.3"/>
+
+    <!-- Glass card main body -->
+    <rect x="88" y="248" width="848" height="490" rx="22" ry="22"
+          fill="url(#glassBase)"
+          stroke="#FFFFFF" stroke-width="1.2" stroke-opacity="0.22"
+          filter="url(#panelShadow)"/>
+
+    <!-- Glass card top shimmer -->
+    <rect x="88" y="248" width="848" height="3" rx="1.5" ry="1.5"
+          fill="url(#glassShimmer)" fill-opacity="0.6"/>
+
+    <!-- Inner panel label -->
+    <!-- Subtle content rows inside the glass card (simulating window list) -->
+
+    <!-- === LAYER 6: Three window thumbnail cards inside the glass panel === -->
+
+    <!-- -- Thumbnail Card 1 (left) -- -->
+    <rect x="112" y="280" width="240" height="160" rx="12" ry="12"
+          fill="url(#thumbGrad1)"
+          stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.35"
+          filter="url(#panelShadow)"/>
+    <!-- Titlebar -->
+    <rect x="112" y="280" width="240" height="28" rx="12" ry="12"
+          fill="#3C4A6A"/>
+    <rect x="112" y="292" width="240" height="16" fill="#3C4A6A"/>
+    <!-- Titlebar traffic lights -->
+    <circle cx="131" cy="294" r="5" fill="#FF5F57"/>
+    <circle cx="147" cy="294" r="5" fill="#FFBD2E"/>
+    <circle cx="163" cy="294" r="5" fill="#28CA41"/>
+    <!-- Titlebar text placeholder -->
+    <rect x="186" y="290" width="70" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/>
+    <!-- Window content: simulated app UI lines -->
+    <rect x="124" y="320" width="180" height="6" rx="3" fill="#8898B0" fill-opacity="0.7"/>
+    <rect x="124" y="333" width="140" height="5" rx="2.5" fill="#8898B0" fill-opacity="0.5"/>
+    <rect x="124" y="346" width="160" height="5" rx="2.5" fill="#8898B0" fill-opacity="0.5"/>
+    <rect x="124" y="359" width="110" height="5" rx="2.5" fill="#8898B0" fill-opacity="0.35"/>
+    <!-- Sidebar strip -->
+    <rect x="112" y="308" width="44" height="132" fill="#2E3A52" fill-opacity="0.4"/>
+    <rect x="120" y="320" width="28" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.2"/>
+    <rect x="120" y="332" width="24" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.15"/>
+    <rect x="120" y="344" width="26" height="6" rx="3" fill="#FFFFFF" fill-opacity="0.15"/>
+    <!-- Card app icon (top left of content) -->
+    <rect x="166" y="318" width="28" height="28" rx="6" fill="#1565C0" fill-opacity="0.85"/>
+    <circle cx="180" cy="332" r="8" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-opacity="0.8"/>
+    <!-- Hover highlight: subtle glow border on card 1 (not selected) -->
+
+    <!-- -- Thumbnail Card 2 (center, SELECTED / active) -- -->
+    <rect x="388" y="264" width="248" height="176" rx="12" ry="12"
+          fill="url(#thumbGrad2)"
+          stroke="#A78BFA" stroke-width="2" stroke-opacity="0.85"
+          filter="url(#panelShadow)"/>
+    <!-- Accent glow border blur layer -->
+    <rect x="386" y="262" width="252" height="180" rx="13" ry="13"
+          fill="none" stroke="#7B5CF5" stroke-width="4" stroke-opacity="0.3"/>
+    <!-- Titlebar -->
+    <rect x="388" y="264" width="248" height="28" rx="12" ry="12"
+          fill="#3B2A6E"/>
+    <rect x="388" y="278" width="248" height="14" fill="#3B2A6E"/>
+    <!-- Titlebar traffic lights -->
+    <circle cx="407" cy="278" r="5" fill="#FF5F57"/>
+    <circle cx="423" cy="278" r="5" fill="#FFBD2E"/>
+    <circle cx="439" cy="278" r="5" fill="#28CA41"/>
+    <!-- Titlebar text placeholder -->
+    <rect x="462" y="274" width="80" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.3"/>
+    <!-- Window content: code-like lines -->
+    <rect x="400" y="304" width="200" height="5" rx="2.5" fill="#8B72D4" fill-opacity="0.6"/>
+    <rect x="410" y="315" width="160" height="5" rx="2.5" fill="#9B82E4" fill-opacity="0.5"/>
+    <rect x="410" y="326" width="180" height="5" rx="2.5" fill="#9B82E4" fill-opacity="0.5"/>
+    <rect x="400" y="337" width="140" height="5" rx="2.5" fill="#8B72D4" fill-opacity="0.4"/>
+    <rect x="410" y="348" width="170" height="5" rx="2.5" fill="#9B82E4" fill-opacity="0.5"/>
+    <rect x="410" y="359" width="130" height="5" rx="2.5" fill="#9B82E4" fill-opacity="0.35"/>
+    <rect x="400" y="370" width="150" height="5" rx="2.5" fill="#8B72D4" fill-opacity="0.4"/>
+    <!-- Selected indicator badge -->
+    <rect x="474" y="417" width="88" height="18" rx="9" ry="9"
+          fill="#7B5CF5" fill-opacity="0.9"/>
+    <rect x="476" y="419" width="84" height="14" rx="7" ry="7"
+          fill="#A78BFA" fill-opacity="0.4"/>
+
+    <!-- -- Thumbnail Card 3 (right) -- -->
+    <rect x="668" y="280" width="240" height="160" rx="12" ry="12"
+          fill="url(#thumbGrad3)"
+          stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.35"
+          filter="url(#panelShadow)"/>
+    <!-- Titlebar -->
+    <rect x="668" y="280" width="240" height="28" rx="12" ry="12"
+          fill="#264040"/>
+    <rect x="668" y="292" width="240" height="16" fill="#264040"/>
+    <!-- Titlebar traffic lights -->
+    <circle cx="687" cy="294" r="5" fill="#FF5F57"/>
+    <circle cx="703" cy="294" r="5" fill="#FFBD2E"/>
+    <circle cx="719" cy="294" r="5" fill="#28CA41"/>
+    <!-- Titlebar text placeholder -->
+    <rect x="742" y="290" width="70" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/>
+    <!-- Window content: document-like layout -->
+    <rect x="680" y="322" width="200" height="8" rx="4" fill="#4A7870" fill-opacity="0.7"/>
+    <rect x="680" y="337" width="160" height="5" rx="2.5" fill="#4A7870" fill-opacity="0.5"/>
+    <rect x="680" y="349" width="180" height="5" rx="2.5" fill="#4A7870" fill-opacity="0.5"/>
+    <rect x="680" y="361" width="120" height="5" rx="2.5" fill="#4A7870" fill-opacity="0.35"/>
+    <rect x="680" y="375" width="150" height="5" rx="2.5" fill="#4A7870" fill-opacity="0.4"/>
+
+    <!-- === LAYER 7: Glass card bottom section (app name label area) === -->
+    <!-- Three app name label placeholders below thumbnails -->
+    <rect x="155" y="450" width="104" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.2"/>
+    <rect x="427" y="454" width="146" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.3"/>
+    <rect x="710" y="450" width="104" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.2"/>
+
+    <!-- Peek arrow pointing down toward dock (visual cue: "peeking") -->
+    <polygon points="512,730 492,700 532,700"
+             fill="#A78BFA" fill-opacity="0.85"/>
+    <polygon points="512,730 492,700 532,700"
+             fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.3"/>
+
+    <!-- === LAYER 8: Top-right corner "SP" monogram badge (brand mark) === -->
+    <!-- Removed — keeping icon clean per macOS HIG -->
+
+    <!-- === LAYER 9: Foreground glow overlay (depth effect) === -->
+    <radialGradient id="fgGlow" cx="50%" cy="85%" r="45%">
+      <stop offset="0%" style="stop-color:#7B5CF5;stop-opacity:0.18" />
+      <stop offset="100%" style="stop-color:#7B5CF5;stop-opacity:0" />
+    </radialGradient>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#fgGlow)"/>
+
+    <!-- === LAYER 10: Specular highlight on icon surface (glass sheen) === -->
+    <ellipse cx="420" cy="100" rx="320" ry="120"
+             fill="#FFFFFF" fill-opacity="0.06"/>
+
+  </g>
+</svg>

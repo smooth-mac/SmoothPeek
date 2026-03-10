@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Background: same deep navy/indigo as app icon for brand consistency -->
+    <linearGradient id="bgMain" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F1829;stop-opacity:1" />
+      <stop offset="45%" style="stop-color:#1C1248;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D0B22;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Central glow behind icon -->
+    <radialGradient id="centerGlow" cx="30%" cy="50%" r="40%">
+      <stop offset="0%" style="stop-color:#5B3FC4;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#5B3FC4;stop-opacity:0" />
+    </radialGradient>
+
+    <!-- Right side text area glow -->
+    <radialGradient id="textGlow" cx="75%" cy="50%" r="35%">
+      <stop offset="0%" style="stop-color:#7B5CF5;stop-opacity:0.12" />
+      <stop offset="100%" style="stop-color:#7B5CF5;stop-opacity:0" />
+    </radialGradient>
+
+    <!-- Glass panel for mock preview window in banner -->
+    <linearGradient id="glassBanner" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.14" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.04" />
+    </linearGradient>
+
+    <!-- Thumb gradients -->
+    <linearGradient id="bt1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8ECF4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C8D0E0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bt2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#EAE4F5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C5B4E8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bt3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E4F0EF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B4D4D0;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Gradient for accent line -->
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7B5CF5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A78BFA;stop-opacity:0" />
+    </linearGradient>
+
+    <!-- Drop shadow filter -->
+    <filter id="softShadow" x="-15%" y="-15%" width="130%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <!-- Icon glow filter -->
+    <filter id="iconGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Clip for app icon rounded square -->
+    <clipPath id="appIconClip">
+      <rect x="60" y="175" width="280" height="280" rx="62" ry="62"/>
+    </clipPath>
+  </defs>
+
+  <!-- === BACKGROUND === -->
+  <rect width="1200" height="630" fill="url(#bgMain)"/>
+  <rect width="1200" height="630" fill="url(#centerGlow)"/>
+  <rect width="1200" height="630" fill="url(#textGlow)"/>
+
+  <!-- Subtle grain overlay rows (horizontal micro-lines for texture) -->
+  <!-- Skipped for SVG cleanliness — handled in raster post-processing if needed -->
+
+  <!-- === LEFT SECTION: App icon (miniaturized version of the main SVG) === -->
+
+  <!-- Icon glow halo -->
+  <ellipse cx="200" cy="315" rx="160" ry="140" fill="#5B3FC4" fill-opacity="0.3"/>
+
+  <!-- App icon background -->
+  <rect x="60" y="175" width="280" height="280" rx="62" ry="62"
+        fill="#1C2B4A"
+        filter="url(#softShadow)"/>
+
+  <!-- App icon background gradient -->
+  <defs>
+    <linearGradient id="iconBgBanner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1C2B4A;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#2D2066;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1A0E3B;stop-opacity:1"/>
+    </linearGradient>
+    <radialGradient id="iconBgGlowBanner" cx="50%" cy="38%" r="55%">
+      <stop offset="0%" style="stop-color:#5B3FC4;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#5B3FC4;stop-opacity:0"/>
+    </radialGradient>
+    <clipPath id="iconBgClipBanner">
+      <rect x="60" y="175" width="280" height="280" rx="62" ry="62"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconBgClipBanner)">
+    <rect x="60" y="175" width="280" height="280" fill="url(#iconBgBanner)"/>
+    <rect x="60" y="175" width="280" height="280" fill="url(#iconBgGlowBanner)"/>
+
+    <!-- Dock bar (scaled ~27%) -->
+    <rect x="86" y="395" width="228" height="26" rx="7" ry="7"
+          fill="#FFFFFF" fill-opacity="0.12"
+          stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.2"/>
+
+    <!-- Dock icons (5 small icons) -->
+    <rect x="97" y="400" width="18" height="18" rx="4" fill="#1565C0"/>
+    <rect x="120" y="400" width="18" height="18" rx="4" fill="#E65100"/>
+    <!-- Highlighted icon (SmoothPeek) -->
+    <rect x="142" y="396" width="24" height="24" rx="6" fill="#5B3FC4"/>
+    <rect x="140" y="394" width="28" height="28" rx="7" fill="none"
+          stroke="#A78BFA" stroke-width="1" stroke-opacity="0.9"/>
+    <circle cx="200" cy="408" r="2" fill="#A78BFA" fill-opacity="0.9"/>
+    <rect x="170" y="400" width="18" height="18" rx="4" fill="#2E7D32"/>
+    <rect x="193" y="400" width="18" height="18" rx="4" fill="#C62828"/>
+
+    <!-- Glass preview panel (scaled) -->
+    <rect x="76" y="262" width="248" height="124" rx="8" ry="8"
+          fill="#FFFFFF" fill-opacity="0.1"
+          stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.25"
+          filter="url(#softShadow)"/>
+    <rect x="76" y="262" width="248" height="1" fill="#FFFFFF" fill-opacity="0.4"/>
+
+    <!-- Three thumbnail cards (scaled) -->
+    <!-- Card 1 -->
+    <rect x="83" y="268" width="68" height="44" rx="4" fill="url(#bt1)"
+          stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.3"/>
+    <rect x="83" y="268" width="68" height="10" rx="4" fill="#3C4A6A"/>
+    <rect x="83" y="272" width="68" height="6" fill="#3C4A6A"/>
+    <circle cx="89" cy="274" r="1.8" fill="#FF5F57"/>
+    <circle cx="94" cy="274" r="1.8" fill="#FFBD2E"/>
+    <circle cx="99" cy="274" r="1.8" fill="#28CA41"/>
+
+    <!-- Card 2 (selected, elevated) -->
+    <rect x="162" y="263" width="76" height="52" rx="4" fill="url(#bt2)"
+          stroke="#A78BFA" stroke-width="1" stroke-opacity="0.9"
+          filter="url(#softShadow)"/>
+    <rect x="162" y="263" width="76" height="10" rx="4" fill="#3B2A6E"/>
+    <rect x="162" y="267" width="76" height="6" fill="#3B2A6E"/>
+    <circle cx="168" cy="269" r="1.8" fill="#FF5F57"/>
+    <circle cx="173" cy="269" r="1.8" fill="#FFBD2E"/>
+    <circle cx="178" cy="269" r="1.8" fill="#28CA41"/>
+
+    <!-- Card 3 -->
+    <rect x="249" y="268" width="68" height="44" rx="4" fill="url(#bt3)"
+          stroke="#FFFFFF" stroke-width="0.5" stroke-opacity="0.3"/>
+    <rect x="249" y="268" width="68" height="10" rx="4" fill="#264040"/>
+    <rect x="249" y="272" width="68" height="6" fill="#264040"/>
+    <circle cx="255" cy="274" r="1.8" fill="#FF5F57"/>
+    <circle cx="260" cy="274" r="1.8" fill="#FFBD2E"/>
+    <circle cx="265" cy="274" r="1.8" fill="#28CA41"/>
+
+    <!-- Peek arrow -->
+    <polygon points="200,387 192,374 208,374" fill="#A78BFA" fill-opacity="0.8"/>
+
+    <!-- Surface specular -->
+    <ellipse cx="160" cy="200" rx="90" ry="34" fill="#FFFFFF" fill-opacity="0.05"/>
+  </g>
+
+  <!-- Icon outer border -->
+  <rect x="60" y="175" width="280" height="280" rx="62" ry="62"
+        fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.12"/>
+
+  <!-- === DIVIDER LINE === -->
+  <rect x="390" y="175" width="1" height="280" rx="0.5"
+        fill="#FFFFFF" fill-opacity="0.1"/>
+
+  <!-- === RIGHT SECTION: Typography and tagline === -->
+
+  <!-- App name -->
+  <text x="430" y="285"
+        font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+        font-size="72"
+        font-weight="700"
+        letter-spacing="-2"
+        fill="#FFFFFF"
+        fill-opacity="0.95">SmoothPeek</text>
+
+  <!-- Accent underline below app name -->
+  <rect x="430" y="300" width="440" height="3" rx="1.5" fill="url(#accentLine)"/>
+
+  <!-- Tagline -->
+  <text x="432" y="355"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="26"
+        font-weight="400"
+        letter-spacing="0.3"
+        fill="#A78BFA"
+        fill-opacity="0.9">Dock 미리보기, 부드럽게.</text>
+
+  <!-- Description line 1 -->
+  <text x="432" y="405"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="18"
+        font-weight="400"
+        fill="#FFFFFF"
+        fill-opacity="0.55">Dock 아이콘에 마우스를 올리면 앱의 창 미리보기를</text>
+
+  <!-- Description line 2 -->
+  <text x="432" y="430"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="18"
+        font-weight="400"
+        fill="#FFFFFF"
+        fill-opacity="0.55">즉시 팝업으로 보여주는 macOS 유틸리티.</text>
+
+  <!-- Feature pills -->
+  <!-- Pill 1: macOS -->
+  <rect x="432" y="464" width="100" height="30" rx="15"
+        fill="#FFFFFF" fill-opacity="0.08"
+        stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.15"/>
+  <text x="482" y="484"
+        text-anchor="middle"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="13"
+        font-weight="500"
+        fill="#FFFFFF"
+        fill-opacity="0.7">macOS 13+</text>
+
+  <!-- Pill 2: Open Source -->
+  <rect x="544" y="464" width="116" height="30" rx="15"
+        fill="#FFFFFF" fill-opacity="0.08"
+        stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.15"/>
+  <text x="602" y="484"
+        text-anchor="middle"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="13"
+        font-weight="500"
+        fill="#FFFFFF"
+        fill-opacity="0.7">Open Source</text>
+
+  <!-- Pill 3: Swift -->
+  <rect x="672" y="464" width="76" height="30" rx="15"
+        fill="#FF5F57" fill-opacity="0.75"
+        stroke="#FF5F57" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="710" y="484"
+        text-anchor="middle"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="13"
+        font-weight="600"
+        fill="#FFFFFF"
+        fill-opacity="0.95">Swift</text>
+
+  <!-- === DECORATIVE ELEMENTS === -->
+
+  <!-- Top-left corner accent dots (subtle grid) -->
+  <circle cx="32" cy="32" r="2" fill="#7B5CF5" fill-opacity="0.4"/>
+  <circle cx="48" cy="32" r="1.5" fill="#7B5CF5" fill-opacity="0.2"/>
+  <circle cx="32" cy="48" r="1.5" fill="#7B5CF5" fill-opacity="0.2"/>
+
+  <!-- Bottom-right version tag -->
+  <text x="1168" y="610"
+        text-anchor="end"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="13"
+        fill="#FFFFFF"
+        fill-opacity="0.25">v1.0.0</text>
+
+  <!-- Subtle horizontal separator near bottom -->
+  <rect x="432" y="508" width="720" height="1" rx="0.5"
+        fill="#FFFFFF" fill-opacity="0.07"/>
+
+  <!-- Bottom tagline / URL -->
+  <text x="432" y="540"
+        font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif"
+        font-size="13"
+        fill="#7B5CF5"
+        fill-opacity="0.65">github.com/juholee/SmoothPeek</text>
+
+</svg>
