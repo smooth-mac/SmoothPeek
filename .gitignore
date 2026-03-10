@@ -24,3 +24,9 @@ DerivedData/
 
 # Claude
 .claude/settings.local.json
+
+# Build artifacts
+dist/
+
+# Swift Package Manager (generated)
+.swiftpm/

@@ -1,9 +1,28 @@
 # DockPeek Swift Engineer — Persistent Memory
 
 ## Project Structure
+- Project renamed DockPeek → SmoothPeek (refactor commit 3af0e7f)
 - App/Core/UI layer architecture via Swift Package Manager
 - Minimum deployment: macOS 13 (Ventura); macOS 14+ branches use SCScreenshotManager
-- Key source root: `Sources/DockPeek/`
+- Key source root: `Sources/SmoothPeek/`
+- Bundle ID: com.juholee.SmoothPeek; version 1.0.0
+
+## SPM executableTarget Resource Constraints (P3-5)
+- **Info.plist cannot be in `resources:` array** — SPM rejects it with "forbidden as top-level resource".
+  Solution: add to `exclude:` in Package.swift; build_release.sh copies it to Contents/ directly.
+- **SVG files must be excluded** from the target to avoid "unhandled file" warnings.
+  Add all .svg files in Resources/ to `exclude:` in Package.swift.
+- **Assets.xcassets** with no PNG files: actool silently skips generating Assets.car.
+  build_release.sh falls back to calling `xcrun actool` directly to produce Assets.car.
+- SPM resource bundle for executableTarget is named `SmoothPeek_SmoothPeek.bundle` (not Assets.car).
+
+## Distribution Pipeline (P3-5)
+- `scripts/build_release.sh` — full pipeline: swift build → .app bundle → codesign → notarize → staple → DMG
+- `Makefile` — convenience targets: make build / icons / bundle / sign / dmg / release / clean / verify / run
+- `dist/` directory holds SmoothPeek.app and SmoothPeek-{version}.dmg after make dmg
+- Signing: `DEVELOPER_ID_APP` env var; hardened runtime via `--options runtime --timestamp`
+- Notarization: `NOTARIZE=1` + `NOTARY_PROFILE` (keychain, preferred) or `APPLE_ID`/`APPLE_TEAM_ID`/`APP_PASSWORD`
+- No App Sandbox (CGEventTap requires it disabled); entitlements at `SmoothPeek.entitlements` in project root
 
 ## Known Swift Constraints (macOS/AppKit)
 - **`@available` on stored properties is not allowed.** When a property type belongs to a newer SDK
@@ -53,7 +72,7 @@
   the card never enters the loading state for them.
 
 ## AppSettings (P2-4 / P2-QA)
-- `@MainActor final class AppSettings: ObservableObject` singleton at `Sources/DockPeek/App/AppSettings.swift`.
+- `@MainActor final class AppSettings: ObservableObject` singleton at `Sources/SmoothPeek/App/AppSettings.swift`.
 - `@AppStorage` keys: `hoverDelay` (0.4s), `thumbnailWidth` (200), `thumbnailHeight` (130), `launchAtLogin` (false).
 - `Keys` enum is **internal** (not private) so DockMonitor can reference `AppSettings.Keys.hoverDelay`.
 - `launchAtLogin.didSet` → `applyLaunchAtLogin`: on register() failure, rolls back `launchAtLogin = false`
@@ -64,7 +83,7 @@
   (both are `@MainActor` and `preferredSize` is called from `@MainActor` context — safe).
 
 ## SettingsView (P2-4 / P2-QA)
-- SwiftUI Form at `Sources/DockPeek/UI/SettingsView.swift`; `LabeledSlider` (private) combines Slider + TextField.
+- SwiftUI Form at `Sources/SmoothPeek/UI/SettingsView.swift`; `LabeledSlider` (private) combines Slider + TextField.
 - Uses `@ObservedObject` (NOT `@StateObject`) — singleton is owned externally, view does not own it.
 - macOS 13 constraint: `onChange(of:)` must use **single-argument** closure `{ newValue in }`.
 - `loginSection` shows a red error Text below the Toggle when `settings.lastLaunchAtLoginError != nil`.
