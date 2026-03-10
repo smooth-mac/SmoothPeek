@@ -1,10 +1,9 @@
 import Cocoa
 
-// _AXUIElementGetWindow: 비공개이지만 macOS 10.10+ 에서 안정적으로 제공되는 API.
-// AXUIElement로부터 CGWindowID를 읽어 frame/title 휴리스틱 없이 정확한 창 매칭을 가능하게 한다.
-// 같은 크기·같은 제목의 창(예: Chrome 멀티 윈도우)에서 발생하는 오매칭의 근본 원인을 해결한다.
-@_silgen_name("_AXUIElementGetWindow")
-private func _AXUIElementGetWindow(_ element: AXUIElement, _ wid: UnsafeMutablePointer<CGWindowID>) -> AXError
+// kAXWindowIdentifierAttribute 조사 결과 (2026-03):
+// AXWindowIdentifier(-25205, kAXErrorAttributeUnsupported)로 공개 SDK에서 지원되지 않음.
+// _AXUIElementGetWindow Private API 없이 frame + title 비교로 창 매칭을 수행한다.
+// 이 방식은 App Store 샌드박스 환경에서도 동작하며 Private API 심사 거부 위험이 없다.
 
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
@@ -15,9 +14,9 @@ enum WindowActivator {
             restoreAndActivate(window: window, app: app)
         } else {
             raiseWindow(window: window, pid: app.processIdentifier)
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
             // Chrome/Electron 앱은 activate() 이후 자체 로직으로 마지막 활성 창을 최전면에 올린다.
-            // 80ms 후 재-raise로 덮어쓴다. CGWindowID 기반 매칭이므로 올바른 창이 선택된다.
+            // 80ms 후 재-raise로 덮어쓴다.
             let pid = app.processIdentifier
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 raiseWindow(window: window, pid: pid)
@@ -35,28 +34,22 @@ enum WindowActivator {
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else {
             // AX 권한 없이 복원 불가 — 앱만 활성화
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
             return
         }
 
-        // 최소화 윈도우는 position/size 정보가 없으므로 CGWindowID → title 순으로 매칭한다.
+        // 최소화 윈도우는 position/size 정보가 없으므로 title로만 매칭한다.
         // 동일 title 윈도우가 여러 개인 경우 첫 번째 최소화 상태 항목을 사용한다.
         for axWindow in axWindows {
             guard isMinimizedAXWindow(axWindow) else { continue }
-
-            // CGWindowID가 일치하면 title 비교 생략
-            var wid: CGWindowID = 0
-            let matchedByID = _AXUIElementGetWindow(axWindow, &wid) == .success && wid == window.id
-            if !matchedByID {
-                guard titleMatches(axWindow, target: window.title) else { continue }
-            }
+            guard titleMatches(axWindow, target: window.title) else { continue }
 
             // kAXMinimizedAttribute = false 로 복원
             AXUIElementSetAttributeValue(axWindow, kAXMinimizedAttribute as CFString, false as CFTypeRef)
 
             // 복원 후 앱 활성화 + raise
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                app.activate(options: [.activateIgnoringOtherApps])
+                app.activate()
                 AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
             }
@@ -64,7 +57,7 @@ enum WindowActivator {
         }
 
         // 매칭 실패 — 앱만 활성화
-        app.activate(options: [.activateIgnoringOtherApps])
+        app.activate()
     }
 
     private static func isMinimizedAXWindow(_ element: AXUIElement) -> Bool {
@@ -107,20 +100,12 @@ enum WindowActivator {
 
     /// AXUIElement와 WindowInfo 매칭.
     ///
-    /// 1순위: _AXUIElementGetWindow로 CGWindowID 직접 비교 (가장 정확).
-    ///   - 같은 크기·같은 제목의 창(Chrome 멀티 윈도우 등)에서도 정확히 식별 가능.
+    /// frame + title 비교 방식 사용.
+    /// AX와 CGWindowList 모두 CG 좌표계(좌상단 원점)를 사용하므로 변환 없이 직접 비교한다.
     ///
-    /// 2순위 fallback: frame + title 비교.
-    ///   - _AXUIElementGetWindow가 실패하는 환경(드문 경우)에 대비한 안전망.
-    ///   - AX와 CGWindowList 모두 CG 좌표계(좌상단 원점)이므로 변환 없이 직접 비교한다.
+    /// 동일 title·동일 frame 창(극히 드문 케이스)은 첫 번째 매칭 창을 선택하며,
+    /// 이는 Private API 없는 환경에서의 최선이다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
-        // 1순위: CGWindowID 직접 비교
-        var windowID: CGWindowID = 0
-        if _AXUIElementGetWindow(element, &windowID) == .success {
-            return windowID == target.id
-        }
-
-        // 2순위 fallback: frame + title
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,

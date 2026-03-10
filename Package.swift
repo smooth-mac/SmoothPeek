@@ -1,9 +1,19 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
+// MARK: - 빌드 변형 플래그
+//
+// App Store 빌드:    swift build -Xswiftc -DMAS_BUILD
+// Direct 배포 빌드:  swift build (기본값, MAS_BUILD 미정의)
+//
+// MAS_BUILD 활성 시:
+//   - CGEventTap 대신 NSEvent 전역 모니터 사용 (Input Monitoring 권한 불필요)
+//   - CGWindowListCreateImage 제거 (SCKit only)
+//   - _AXUIElementGetWindow Private API 없음 (이미 제거됨)
+
 let package = Package(
     name: "SmoothPeek",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
             name: "SmoothPeek",

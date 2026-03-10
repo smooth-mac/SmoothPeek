@@ -101,17 +101,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 화면 녹화 권한은 ScreenCaptureKit 첫 사용 시 자동 요청됨
     }
 
-    // P1-4: CGEventTap 생성 실패 시 사용자에게 안내
+    // 접근성 권한 오류 시 사용자에게 안내
     private func showPermissionAlert() {
         // 상태바 아이콘을 경고 아이콘으로 변경 — runModal() 이전에 수행해야
         // 모달이 떠 있는 동안에도 아이콘이 오류 상태를 반영한다.
-        // 권한 오류 상태: SF Symbol 경고 아이콘으로 교체 (Assets 불필요, 시스템 심볼 그대로 사용)
         statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "SmoothPeek — 권한 필요")
         statusItem?.button?.toolTip = "SmoothPeek: 접근성 권한이 필요합니다"
 
         let alert = NSAlert()
         alert.messageText = "접근성 권한이 필요합니다"
-        alert.informativeText = "SmoothPeek가 Dock 이벤트를 감지하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 SmoothPeek를 허용한 후 앱을 재시작해 주세요."
+        alert.informativeText = "SmoothPeek가 Dock 아이콘 감지 및 창 활성화 기능을 사용하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 SmoothPeek를 허용한 후 앱을 재시작해 주세요."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "시스템 설정 열기")
         alert.addButton(withTitle: "나중에")

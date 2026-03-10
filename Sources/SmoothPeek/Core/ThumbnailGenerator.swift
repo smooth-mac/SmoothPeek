@@ -3,8 +3,8 @@ import ScreenCaptureKit
 
 /// 윈도우 썸네일을 비동기로 생성하는 클래스.
 ///
-/// - macOS 14+: ScreenCaptureKit (SCScreenshotManager) 사용 — 고품질, 권한 필요
-/// - Fallback: CGWindowListCreateImageFromArray 사용 — 저품질, 권한 불필요
+/// macOS 14+ 전용으로 ScreenCaptureKit(SCScreenshotManager)을 사용한다.
+/// App Store 배포 시 CGWindowListCreateImage(deprecated, sandbox 제한)를 사용하지 않는다.
 @MainActor
 final class ThumbnailGenerator {
     static let shared = ThumbnailGenerator()
@@ -41,12 +41,7 @@ final class ThumbnailGenerator {
             return entry.image
         }
 
-        let image: NSImage?
-        if #available(macOS 14.0, *) {
-            image = await captureWithSCKit(windowID: window.id, size: size)
-        } else {
-            image = captureWithCGWindow(windowID: window.id, size: size)
-        }
+        let image = await captureWithSCKit(windowID: window.id, size: size)
 
         if let image {
             storeThumbnailInCache(windowID: window.id, image: image)
@@ -76,9 +71,8 @@ final class ThumbnailGenerator {
         cache[windowID] = CacheEntry(image: image, timestamp: Date())
     }
 
-    // MARK: - ScreenCaptureKit (macOS 14+)
+    // MARK: - ScreenCaptureKit
 
-    @available(macOS 14.0, *)
     private func shareableContent() async throws -> SCShareableContent {
         // 캐시가 유효하면 재조회 없이 반환
         if let timestamp = shareableContentTimestamp,
@@ -93,7 +87,6 @@ final class ThumbnailGenerator {
         return content
     }
 
-    @available(macOS 14.0, *)
     private func captureWithSCKit(windowID: CGWindowID, size: CGSize) async -> NSImage? {
         do {
             let content = try await shareableContent()
@@ -103,39 +96,48 @@ final class ThumbnailGenerator {
                 // 캐시를 무효화하면 다음 호출 시 최신 목록으로 재조회하여 SCKit 품질을 즉시 복구한다.
                 cachedShareableContent = nil
                 shareableContentTimestamp = nil
-                return captureWithCGWindow(windowID: windowID, size: size)
+                // SCShareableContent 재조회 후 재시도
+                return await captureWithSCKitRetry(windowID: windowID, size: size)
             }
 
-            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-
-            let config = SCStreamConfiguration()
-            config.width = Int(size.width * 2)  // Retina 대응
-            config.height = Int(size.height * 2)
-            config.scalesToFit = true
-            config.showsCursor = false
-
-            let cgImage = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: config
-            )
-            return NSImage(cgImage: cgImage, size: size)
+            return try await captureWindow(scWindow, size: size)
         } catch {
             print("[ThumbnailGenerator] SCKit 캡처 실패: \(error)")
-            return captureWithCGWindow(windowID: windowID, size: size)
+            return nil
         }
     }
 
-    // MARK: - CGWindowList Fallback
+    /// SCShareableContent 캐시 무효화 후 1회 재시도.
+    /// 새로 열린 창이 캐시에 없을 때만 호출된다.
+    private func captureWithSCKitRetry(windowID: CGWindowID, size: CGSize) async -> NSImage? {
+        do {
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            cachedShareableContent = content
+            shareableContentTimestamp = Date()
 
-    private func captureWithCGWindow(windowID: CGWindowID, size: CGSize) -> NSImage? {
-        guard let cgImage = CGWindowListCreateImage(
-            .null,
-            .optionIncludingWindow,
-            windowID,
-            [.bestResolution, .nominalResolution]
-        ) else { return nil }
+            guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+                return nil
+            }
+            return try await captureWindow(scWindow, size: size)
+        } catch {
+            print("[ThumbnailGenerator] SCKit 재시도 실패: \(error)")
+            return nil
+        }
+    }
 
-        let image = NSImage(cgImage: cgImage, size: size)
-        return image
+    private func captureWindow(_ scWindow: SCWindow, size: CGSize) async throws -> NSImage {
+        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+
+        let config = SCStreamConfiguration()
+        config.width = Int(size.width * 2)   // Retina 대응
+        config.height = Int(size.height * 2)
+        config.scalesToFit = true
+        config.showsCursor = false
+
+        let cgImage = try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: config
+        )
+        return NSImage(cgImage: cgImage, size: size)
     }
 }

@@ -55,10 +55,8 @@ final class PreviewPanelController {
 
         // NSHostingController는 기본적으로 SwiftUI intrinsic size로 패널을 자동 리사이즈한다.
         // 이 리사이즈는 positionPanel 이후에 발생해 Y가 틀어지는 원인이 된다.
-        // macOS 13+에서는 sizingOptions = [] 로 자동 리사이즈를 완전 차단한다.
-        if #available(macOS 13.0, *) {
-            host.sizingOptions = []
-        }
+        // sizingOptions = [] 로 자동 리사이즈를 완전 차단한다 (macOS 13+ API, 최소 배포 14).
+        host.sizingOptions = []
 
         panel.contentViewController = host
         panel.setContentSize(size)
@@ -70,13 +68,6 @@ final class PreviewPanelController {
         // orderFront 이후 포지셔닝: orderFront 시점에 SwiftUI 레이아웃이 완료되므로
         // 이 시점의 panel.frame.size가 실제 최종 크기에 가장 근접하다.
         positionPanel(panel, near: app)
-
-        // macOS 12 fallback: sizingOptions 미지원 환경에서 async auto-resize가
-        // 발생하더라도 다음 런루프에서 Y를 재보정한다. alpha=0 구간이므로 사용자에게 보이지 않는다.
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let panel = self.panel, panel.isVisible else { return }
-            self.positionPanel(panel, near: app)
-        }
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Animation.fadeInDuration

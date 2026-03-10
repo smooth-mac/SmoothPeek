@@ -109,8 +109,7 @@ private struct LabeledSlider: View {
                 .frame(width: 36, alignment: .leading)
 
             Slider(value: $value, in: range, step: step)
-                // macOS 13 호환: onChange 단일 인자 형식 사용
-                .onChange(of: value) { newValue in
+                .onChange(of: value) { _, newValue in
                     if !isTextFieldFocused {
                         textInput = newValue.formatted(formatStyle)
                     }
@@ -126,8 +125,7 @@ private struct LabeledSlider: View {
                 .onSubmit {
                     commitTextInput()
                 }
-                // macOS 13 호환: onChange 단일 인자 형식 사용
-                .onChange(of: isTextFieldFocused) { focused in
+                .onChange(of: isTextFieldFocused) { _, focused in
                     if focused {
                         textInput = value.formatted(formatStyle)
                     } else {
