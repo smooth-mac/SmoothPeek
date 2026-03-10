@@ -1,5 +1,11 @@
 import Cocoa
 
+// _AXUIElementGetWindow: 비공개이지만 macOS 10.10+ 에서 안정적으로 제공되는 API.
+// AXUIElement로부터 CGWindowID를 읽어 frame/title 휴리스틱 없이 정확한 창 매칭을 가능하게 한다.
+// 같은 크기·같은 제목의 창(예: Chrome 멀티 윈도우)에서 발생하는 오매칭의 근본 원인을 해결한다.
+@_silgen_name("_AXUIElementGetWindow")
+private func _AXUIElementGetWindow(_ element: AXUIElement, _ wid: UnsafeMutablePointer<CGWindowID>) -> AXError
+
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
     /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동.
@@ -8,11 +14,14 @@ enum WindowActivator {
         if window.isMinimized {
             restoreAndActivate(window: window, app: app)
         } else {
-            // raise를 먼저 수행한 뒤 activate한다.
-            // activate를 먼저 하면 OS가 마지막 활성 윈도우를 최전면으로 올리고,
-            // 이후 raise가 덮어쓰기 어려운 경쟁 조건이 생긴다.
             raiseWindow(window: window, pid: app.processIdentifier)
             app.activate(options: [.activateIgnoringOtherApps])
+            // Chrome/Electron 앱은 activate() 이후 자체 로직으로 마지막 활성 창을 최전면에 올린다.
+            // 80ms 후 재-raise로 덮어쓴다. CGWindowID 기반 매칭이므로 올바른 창이 선택된다.
+            let pid = app.processIdentifier
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                raiseWindow(window: window, pid: pid)
+            }
         }
     }
 
@@ -30,11 +39,17 @@ enum WindowActivator {
             return
         }
 
-        // 최소화 윈도우는 position/size 정보가 없으므로 title로만 매칭한다.
+        // 최소화 윈도우는 position/size 정보가 없으므로 CGWindowID → title 순으로 매칭한다.
         // 동일 title 윈도우가 여러 개인 경우 첫 번째 최소화 상태 항목을 사용한다.
         for axWindow in axWindows {
             guard isMinimizedAXWindow(axWindow) else { continue }
-            guard titleMatches(axWindow, target: window.title) else { continue }
+
+            // CGWindowID가 일치하면 title 비교 생략
+            var wid: CGWindowID = 0
+            let matchedByID = _AXUIElementGetWindow(axWindow, &wid) == .success && wid == window.id
+            if !matchedByID {
+                guard titleMatches(axWindow, target: window.title) else { continue }
+            }
 
             // kAXMinimizedAttribute = false 로 복원
             AXUIElementSetAttributeValue(axWindow, kAXMinimizedAttribute as CFString, false as CFTypeRef)
@@ -90,13 +105,22 @@ enum WindowActivator {
         }
     }
 
-    /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭.
+    /// AXUIElement와 WindowInfo 매칭.
     ///
-    /// 좌표계:
-    /// - kAXPositionAttribute는 CG 좌표계(좌상단 원점, y 아래로 증가)를 반환한다.
-    /// - CGWindowList의 kCGWindowBounds도 동일한 CG 좌표계이다.
-    /// - 따라서 두 값을 그대로 비교할 수 있으며 Y-flip 변환이 불필요하다.
+    /// 1순위: _AXUIElementGetWindow로 CGWindowID 직접 비교 (가장 정확).
+    ///   - 같은 크기·같은 제목의 창(Chrome 멀티 윈도우 등)에서도 정확히 식별 가능.
+    ///
+    /// 2순위 fallback: frame + title 비교.
+    ///   - _AXUIElementGetWindow가 실패하는 환경(드문 경우)에 대비한 안전망.
+    ///   - AX와 CGWindowList 모두 CG 좌표계(좌상단 원점)이므로 변환 없이 직접 비교한다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
+        // 1순위: CGWindowID 직접 비교
+        var windowID: CGWindowID = 0
+        if _AXUIElementGetWindow(element, &windowID) == .success {
+            return windowID == target.id
+        }
+
+        // 2순위 fallback: frame + title
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
@@ -109,7 +133,6 @@ enum WindowActivator {
         AXValueGetValue(posVal as! AXValue, .cgPoint, &axPos)   // safe: type ID checked
         AXValueGetValue(sizeVal as! AXValue, .cgSize, &axSize)  // safe: type ID checked
 
-        // AX와 CGWindowList 모두 CG 좌표계 — 변환 없이 직접 비교
         let axFrame = CGRect(x: axPos.x, y: axPos.y, width: axSize.width, height: axSize.height)
 
         let tolerance: CGFloat = 4
@@ -118,22 +141,12 @@ enum WindowActivator {
               abs(axFrame.size.width - target.frame.size.width) < tolerance,
               abs(axFrame.size.height - target.frame.size.height) < tolerance else { return false }
 
-        // 동일 크기 윈도우가 여러 개일 때 title로 보조 검증.
-        //
-        // [불변 조건] target.title은 WindowEnumerator에서
-        //   kCGWindowName ?? app.localizedName 으로 채워지므로 실질적으로 비어있지 않다.
-        //
-        // [의도적 skip] axTitle이 비어있는 경우(무제목 창, 일부 유틸리티 패널 등)는
-        //   title 비교를 건너뛰고 frame 매칭만으로 true를 반환한다.
-        //   이는 무제목 창이 여러 개일 때 첫 번째 AX 순서 창을 선택하는 합리적 fallback이다.
         var titleRef: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
         if let axTitle = titleRef as? String, !axTitle.isEmpty {
-            // target.title은 항상 비어있지 않으므로 axTitle만 검사하면 충분하다.
             return axTitle == target.title
         }
 
-        // axTitle을 읽을 수 없거나 빈 문자열이면 frame 매칭 결과를 그대로 채택한다.
         return true
     }
 }

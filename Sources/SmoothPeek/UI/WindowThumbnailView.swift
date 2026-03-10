@@ -10,6 +10,17 @@ struct PreviewPanelView: View {
     @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
+        // 실제 썸네일 너비의 최대값을 열 너비로 사용한다.
+        // aspect ratio 유지로 인해 세로 긴 창은 thumbnailWidth보다 훨씬 좁은 썸네일을 가지므로
+        // 설정값 그대로 쓰면 열 내부에 불필요한 좌우 여백이 생긴다.
+        let maxW = CGFloat(settings.thumbnailWidth)
+        let maxH = CGFloat(settings.thumbnailHeight)
+        let colWidth: CGFloat = windows.map { w -> CGFloat in
+            guard !w.isMinimized, w.frame.width > 0, w.frame.height > 0 else { return maxW }
+            let scale = min(maxW / w.frame.width, maxH / w.frame.height)
+            return max(1, (w.frame.width * scale).rounded())
+        }.max() ?? maxW
+
         VStack(alignment: .leading, spacing: 8) {
             // 앱 이름 헤더
             HStack(spacing: 6) {
@@ -24,11 +35,10 @@ struct PreviewPanelView: View {
             }
             .padding(.horizontal, 12)
 
-            // 썸네일 그리드 — 열 너비는 AppSettings.thumbnailWidth를 따른다
             let columns = min(windows.count, 4)
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.fixed(settings.thumbnailWidth), spacing: 12),
+                    repeating: GridItem(.fixed(colWidth), spacing: 12),
                     count: columns
                 ),
                 spacing: 12

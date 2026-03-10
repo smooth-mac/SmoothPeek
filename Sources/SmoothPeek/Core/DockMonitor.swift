@@ -23,6 +23,10 @@ final class DockMonitor {
 
     private var lastHoveredBundleID: String?
     private var hoverTimer: Timer?
+    // 마우스가 미리보기 패널 위에 있는 동안 true.
+    // Dock → 패널 이동 중 lastHoveredBundleID 가 nil 로 초기화된 뒤에도
+    // 패널 밖으로 나가면 hide 가 정상 스케줄되도록 보조 플래그로 사용한다.
+    private var isHoveringPanel = false
 
     // MARK: - Lifecycle
 
@@ -94,11 +98,20 @@ final class DockMonitor {
         // AXUIElement 좌표계는 CG 좌표계(좌상단 원점, y 아래로)와 동일하다.
         // 마우스 이벤트도 CG 좌표이므로 변환 없이 직접 비교한다.
         guard let hoveredApp = findHoveredDockApp(at: point) else {
-            // 마우스가 미리보기 패널 위에 있으면 패널을 숨기지 않는다.
-            if isMouseOverPanel?(point) == true { return }
+            if isMouseOverPanel?(point) == true {
+                // 패널 위에 있는 동안은 진행 중인 hide 타이머를 취소한다.
+                // 취소하지 않으면 Dock → 패널 이동 중 시작된 0.2s 타이머가 패널을 숨긴다.
+                isHoveringPanel = true
+                cancelHoverTimer()
+                return
+            }
+            // isHoveringPanel 리셋은 scheduleHoverEnd 내부에서 수행한다.
+            // 여기서 false로 설정하면 scheduleHoverEnd의 guard 조건을 통과하지 못해
+            // 패널이 사라지지 않는 버그가 발생한다.
             scheduleHoverEnd()
             return
         }
+        isHoveringPanel = false
 
         let bundleID = hoveredApp.bundleIdentifier ?? ""
         if bundleID == lastHoveredBundleID { return }
@@ -117,7 +130,8 @@ final class DockMonitor {
     }
 
     private func scheduleHoverEnd() {
-        guard lastHoveredBundleID != nil else { return }
+        guard lastHoveredBundleID != nil || isHoveringPanel else { return }
+        isHoveringPanel = false   // guard 통과 후 리셋
         cancelHoverTimer()
         lastHoveredBundleID = nil
 
@@ -130,6 +144,13 @@ final class DockMonitor {
     private func cancelHoverTimer() {
         hoverTimer?.invalidate()
         hoverTimer = nil
+    }
+
+    /// 창 클릭 등으로 미리보기가 닫힌 후, 같은 앱 아이콘 위에 마우스가 그대로 있어도
+    /// 다음 hover 이벤트에서 패널이 다시 표시되도록 상태를 초기화한다.
+    func resetLastHovered() {
+        cancelHoverTimer()
+        lastHoveredBundleID = nil
     }
 
     // MARK: - Dock 아이콘 탐색

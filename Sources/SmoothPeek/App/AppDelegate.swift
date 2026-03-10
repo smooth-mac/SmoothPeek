@@ -132,6 +132,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         dockMonitor?.onPermissionError = { [weak self] in
             Task { @MainActor in self?.showPermissionAlert() }
         }
+        previewController?.onWindowSelected = { [weak self] in
+            self?.dockMonitor?.resetLastHovered()
+        }
         dockMonitor?.isMouseOverPanel = { [weak self] point in
             self?.previewController?.containsMouse(at: point) ?? false
         }

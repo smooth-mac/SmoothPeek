@@ -11,6 +11,10 @@ final class PreviewPanelController {
     // show()가 들어오면 이 플래그를 보고 진행 중인 fade out을 취소한다
     private var isFadingOut = false
 
+    /// 미리보기에서 창을 선택했을 때 호출되는 콜백.
+    /// AppDelegate에서 DockMonitor 상태 리셋에 사용한다.
+    var onWindowSelected: (() -> Void)?
+
     // MARK: - Animation Constants
 
     private enum Animation {
@@ -28,6 +32,7 @@ final class PreviewPanelController {
 
         let rootView = PreviewPanelView(app: app, windows: windows) { [weak self] window in
             self?.hide()
+            self?.onWindowSelected?()
             WindowActivator.activate(window: window, app: app)
         }
 
@@ -45,15 +50,33 @@ final class PreviewPanelController {
         }
 
         let host = NSHostingController(rootView: rootView)
-        host.view.frame = CGRect(origin: .zero, size: preferredSize(windowCount: windows.count))
+        let size = preferredSize(for: windows)
+        host.view.frame = CGRect(origin: .zero, size: size)
+
+        // NSHostingController는 기본적으로 SwiftUI intrinsic size로 패널을 자동 리사이즈한다.
+        // 이 리사이즈는 positionPanel 이후에 발생해 Y가 틀어지는 원인이 된다.
+        // macOS 13+에서는 sizingOptions = [] 로 자동 리사이즈를 완전 차단한다.
+        if #available(macOS 13.0, *) {
+            host.sizingOptions = []
+        }
 
         panel.contentViewController = host
-        panel.setContentSize(host.view.frame.size)
-        positionPanel(panel, near: app)
+        panel.setContentSize(size)
 
         // alphaValue를 0으로 리셋한 뒤 orderFront — 이후 easeOut fade in
         panel.alphaValue = 0
         panel.orderFront(nil)
+
+        // orderFront 이후 포지셔닝: orderFront 시점에 SwiftUI 레이아웃이 완료되므로
+        // 이 시점의 panel.frame.size가 실제 최종 크기에 가장 근접하다.
+        positionPanel(panel, near: app)
+
+        // macOS 12 fallback: sizingOptions 미지원 환경에서 async auto-resize가
+        // 발생하더라도 다음 런루프에서 Y를 재보정한다. alpha=0 구간이므로 사용자에게 보이지 않는다.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel, panel.isVisible else { return }
+            self.positionPanel(panel, near: app)
+        }
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Animation.fadeInDuration
@@ -127,16 +150,64 @@ final class PreviewPanelController {
 
     // MARK: - Layout
 
-    private func preferredSize(windowCount: Int) -> CGSize {
-        let thumbWidth  = CGFloat(AppSettings.shared.thumbnailWidth)
-        let thumbHeight = CGFloat(AppSettings.shared.thumbnailHeight)
-        let padding: CGFloat = 12
-        let columns = min(windowCount, 4)
-        let rows = Int(ceil(Double(windowCount) / Double(columns)))
+    /// 실제 SwiftUI 레이아웃을 반영한 패널 크기 계산.
+    ///
+    /// 레이아웃 구조:
+    ///   PreviewPanelView
+    ///     .padding(.top, 12)                          → 12pt
+    ///     HStack(header)                              → 20pt  (아이콘 20×20 기준)
+    ///     VStack spacing: 8                           →  8pt
+    ///     LazyVGrid(spacing: 12)                      → rows * cardH + (rows-1)*12
+    ///       WindowThumbnailCard: VStack(spacing:4)
+    ///         ZStack .frame(thumbW, thumbH)           → thumbHeight (aspect-ratio fitted)
+    ///         Text size:11                            → ~13pt
+    ///       card height = thumbHeight + 4 + 13 = thumbHeight + 17
+    ///     .padding([.horizontal, .bottom], 12)        → 12pt (bottom)
+    ///
+    ///   총 fixed 오버헤드 = 12 + 20 + 8 + 12 = 52pt
+    ///   각 row 기여 = max(thumbHeight in row) + 17
+    ///   row 간 gap = 12pt (LazyVGrid spacing)
+    ///
+    /// 창별 thumbHeight는 WindowThumbnailCard.thumbSize와 동일한 로직으로 계산해
+    /// 실제 렌더 높이와 오차 없이 일치시킨다.
+    private func preferredSize(for windows: [WindowInfo]) -> CGSize {
+        let maxW   = CGFloat(AppSettings.shared.thumbnailWidth)
+        let maxH   = CGFloat(AppSettings.shared.thumbnailHeight)
+        let hPad: CGFloat  = 12   // grid horizontal/bottom padding
+        let rGap: CGFloat  = 12   // LazyVGrid row spacing
+        let cardExtra: CGFloat = 17  // VStack spacing(4) + Text height(~13)
 
-        let width = CGFloat(columns) * (thumbWidth + padding) + padding
-        let height = CGFloat(rows) * (thumbHeight + padding) + padding + 40 // 앱 이름 헤더
+        let columns = min(windows.count, 4)
+        let rows    = Int(ceil(Double(windows.count) / Double(columns)))
 
+        // 창별 실제 thumb 크기 (WindowThumbnailCard.thumbSize와 동일 로직)
+        let thumbSizes: [CGSize] = windows.map { w in
+            guard !w.isMinimized, w.frame.width > 0, w.frame.height > 0 else {
+                return CGSize(width: maxW, height: maxH)
+            }
+            let scale = min(maxW / w.frame.width, maxH / w.frame.height)
+            return CGSize(
+                width:  max(1, (w.frame.width  * scale).rounded()),
+                height: max(1, (w.frame.height * scale).rounded())
+            )
+        }
+
+        // 실제 최대 thumb 너비 → PreviewPanelView의 colWidth와 동일한 값
+        let colW = thumbSizes.map(\.width).max() ?? maxW
+
+        // 행별 최대 thumb 높이 합산
+        var gridH: CGFloat = hPad  // bottom padding
+        for row in 0..<rows {
+            let lo = row * columns
+            let hi = min(lo + columns, thumbSizes.count)
+            let rowThumbH = thumbSizes[lo..<hi].map(\.height).max() ?? maxH
+            gridH += rowThumbH + cardExtra
+            if row < rows - 1 { gridH += rGap }
+        }
+
+        // 고정 오버헤드: top(12) + header(20) + VStack spacing(8)
+        let height = 40 + gridH
+        let width  = CGFloat(columns) * (colW + hPad) + hPad
         return CGSize(width: width, height: height)
     }
 
@@ -181,27 +252,31 @@ final class PreviewPanelController {
         guard let screen = dockScreen() else { return }
         let panelSize = panel.frame.size
         let edge = dockEdge(on: screen)
-        let iconCenter = findDockIconCenter(for: app)
+        let iconFrame = findDockIconFrame(for: app)
+        let gap: CGFloat = 12
 
         let x: CGFloat
         let y: CGFloat
 
         switch edge {
         case .bottom(let dockHeight):
-            let centerX = iconCenter?.x ?? screen.frame.midX
+            let centerX = iconFrame?.midX ?? screen.frame.midX
             x = (centerX - panelSize.width / 2)
                 .clamped(to: 8...(screen.frame.maxX - panelSize.width - 8))
-            y = dockHeight + 8
+            // Dock magnification 중 AX 프레임을 읽으면 아이콘이 확대된 상태라
+            // minY가 위로 올라가 패널 위치가 불안정해진다.
+            // visibleFrame.minY(Dock 영역 경계)를 기준으로 사용해 항상 일정한 위치를 보장한다.
+            y = dockHeight + gap
 
         case .left(let dockWidth):
-            x = dockWidth + 8
-            let centerY = iconCenter.map { $0.y - panelSize.height / 2 }
+            x = dockWidth + gap
+            let centerY = iconFrame.map { $0.midY - panelSize.height / 2 }
                 ?? (screen.frame.midY - panelSize.height / 2)
             y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
 
         case .right(let dockWidth):
-            x = screen.frame.maxX - dockWidth - panelSize.width - 8
-            let centerY = iconCenter.map { $0.y - panelSize.height / 2 }
+            x = screen.frame.maxX - dockWidth - panelSize.width - gap
+            let centerY = iconFrame.map { $0.midY - panelSize.height / 2 }
                 ?? (screen.frame.midY - panelSize.height / 2)
             y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
         }
@@ -209,11 +284,12 @@ final class PreviewPanelController {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    /// Dock 아이콘의 화면 중앙 좌표를 AXUIElement로 추출.
+    /// Dock 아이콘의 AX 프레임(NS 좌표계)을 반환.
     ///
-    /// 반환값은 AX 좌표계 그대로이며 `setFrameOrigin`(NS 좌표계)에 직접 사용된다.
-    /// AX position은 NS 좌표계와 동일 원점이므로 별도 변환이 불필요하다.
-    private func findDockIconCenter(for app: NSRunningApplication) -> CGPoint? {
+    /// - `midX`: 패널 수평 중앙 정렬에 사용
+    /// - `maxY`: 패널 하단 Y 기준점 — Dock 영역 상단이 아닌 아이콘 상단 기준으로
+    ///           패널을 위치시켜 앱마다 일정한 간격이 유지된다.
+    private func findDockIconFrame(for app: NSRunningApplication) -> CGRect? {
         guard let dockApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.bundleIdentifier == "com.apple.dock"
         }) else { return nil }
@@ -222,10 +298,8 @@ final class PreviewPanelController {
         guard !bundleID.isEmpty else { return nil }
 
         let dockElement = AXUIElementCreateApplication(dockApp.processIdentifier)
-        guard let iconElement = DockAXHelper.dockIconElement(for: bundleID, in: dockElement),
-              let frame = DockAXHelper.axFrame(of: iconElement) else { return nil }
-
-        return CGPoint(x: frame.midX, y: frame.midY)
+        guard let iconElement = DockAXHelper.dockIconElement(for: bundleID, in: dockElement) else { return nil }
+        return DockAXHelper.axFrame(of: iconElement)
     }
 }
 

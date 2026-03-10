@@ -50,7 +50,9 @@ enum WindowEnumerator {
         let onScreenIDs = Set(onScreenWindows.map(\.id))
         let deduplicatedMinimized = minimizedWindows.filter { !onScreenIDs.contains($0.id) }
 
-        return onScreenWindows + deduplicatedMinimized
+        // CGWindowID는 창 생성 순서대로 할당된다.
+        // z-order 대신 생성 순서(오름차순)로 정렬해 클릭 후에도 창 위치가 바뀌지 않도록 한다.
+        return (onScreenWindows + deduplicatedMinimized).sorted { $0.id < $1.id }
     }
 
     // MARK: - Private Helpers
