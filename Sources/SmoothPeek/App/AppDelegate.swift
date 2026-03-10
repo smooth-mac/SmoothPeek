@@ -28,7 +28,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "macwindow.on.rectangle", accessibilityDescription: "SmoothPeek")
+            // Assets.xcassets의 StatusBarIcon 이미지셋을 로드한다.
+            // isTemplate = true 로 설정하면 macOS가 다크/라이트 모드에서
+            // 자동으로 색상을 반전시켜 시스템 상태바 스타일에 맞춰 준다.
+            let icon = NSImage(named: "StatusBarIcon")
+            icon?.isTemplate = true
+            button.image = icon
             button.action = #selector(statusBarClicked)
             button.target = self
         }
@@ -100,6 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showPermissionAlert() {
         // 상태바 아이콘을 경고 아이콘으로 변경 — runModal() 이전에 수행해야
         // 모달이 떠 있는 동안에도 아이콘이 오류 상태를 반영한다.
+        // 권한 오류 상태: SF Symbol 경고 아이콘으로 교체 (Assets 불필요, 시스템 심볼 그대로 사용)
         statusItem?.button?.image = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "SmoothPeek — 권한 필요")
         statusItem?.button?.toolTip = "SmoothPeek: 접근성 권한이 필요합니다"
 
