@@ -1,0 +1,376 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03BD93BD608ADB9D71CE0106 /* PreviewPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FA533BFD30F31FF4B40116 /* PreviewPanelController.swift */; };
+		2C7B2C1B9923F5DE6C0F2F3E /* WindowThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D908EF72F1AFB72F6DC0FC49 /* WindowThumbnailView.swift */; };
+		67A9DCB6F4CE3168CD39DE74 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E746D1CB8D8584CFFBE8A34 /* AppDelegate.swift */; };
+		9472F2BF17CE704113B016F8 /* DockAXHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 848E766110CD4A8580DE2D2C /* DockAXHelper.swift */; };
+		A4F0C3CC80C9043A332180D6 /* DockMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D754ECE552B9F65C0C9AC4B /* DockMonitor.swift */; };
+		A88812D8423F5588B76D4B8F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FB39B132643DB9C1A50395 /* SettingsView.swift */; };
+		A9560210057731156DC6161A /* SmoothPeekApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C55B75527F5A7FF6ACF9907 /* SmoothPeekApp.swift */; };
+		AC2EE9431D3717943377D5AE /* WindowEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03690DA121944ABE0D87771B /* WindowEnumerator.swift */; };
+		BFBC34C03F636E2A57A6D711 /* ThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62506C908936DFECF11A20A2 /* ThumbnailGenerator.swift */; };
+		CF4AD82BE328A2C9A5332017 /* WindowActivator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B006BFD5C78BCA61CFEF5BCF /* WindowActivator.swift */; };
+		F5A29F692D96B6D5E83A10D2 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		03690DA121944ABE0D87771B /* WindowEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowEnumerator.swift; sourceTree = "<group>"; };
+		2189BB4DD668657BDBC161A2 /* SmoothPeek.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmoothPeek.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		37FB39B132643DB9C1A50395 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		3D754ECE552B9F65C0C9AC4B /* DockMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockMonitor.swift; sourceTree = "<group>"; };
+		4C55B75527F5A7FF6ACF9907 /* SmoothPeekApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmoothPeekApp.swift; sourceTree = "<group>"; };
+		62506C908936DFECF11A20A2 /* ThumbnailGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailGenerator.swift; sourceTree = "<group>"; };
+		74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		848E766110CD4A8580DE2D2C /* DockAXHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockAXHelper.swift; sourceTree = "<group>"; };
+		97FA533BFD30F31FF4B40116 /* PreviewPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelController.swift; sourceTree = "<group>"; };
+		9E746D1CB8D8584CFFBE8A34 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B006BFD5C78BCA61CFEF5BCF /* WindowActivator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowActivator.swift; sourceTree = "<group>"; };
+		D908EF72F1AFB72F6DC0FC49 /* WindowThumbnailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowThumbnailView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		413AD50955628C3C121001EA = {
+			isa = PBXGroup;
+			children = (
+				BAB477359EAA64B67DFAB168 /* App */,
+				880993ECF5FC7BE00E0912C3 /* Core */,
+				D776170C02883F07273D2844 /* UI */,
+				54F65E37F44219FC3D41F85E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		54F65E37F44219FC3D41F85E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2189BB4DD668657BDBC161A2 /* SmoothPeek.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		880993ECF5FC7BE00E0912C3 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				848E766110CD4A8580DE2D2C /* DockAXHelper.swift */,
+				3D754ECE552B9F65C0C9AC4B /* DockMonitor.swift */,
+				62506C908936DFECF11A20A2 /* ThumbnailGenerator.swift */,
+				B006BFD5C78BCA61CFEF5BCF /* WindowActivator.swift */,
+				03690DA121944ABE0D87771B /* WindowEnumerator.swift */,
+			);
+			name = Core;
+			path = Sources/SmoothPeek/Core;
+			sourceTree = "<group>";
+		};
+		BAB477359EAA64B67DFAB168 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				9E746D1CB8D8584CFFBE8A34 /* AppDelegate.swift */,
+				74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */,
+				4C55B75527F5A7FF6ACF9907 /* SmoothPeekApp.swift */,
+			);
+			name = App;
+			path = Sources/SmoothPeek/App;
+			sourceTree = "<group>";
+		};
+		D776170C02883F07273D2844 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				97FA533BFD30F31FF4B40116 /* PreviewPanelController.swift */,
+				37FB39B132643DB9C1A50395 /* SettingsView.swift */,
+				D908EF72F1AFB72F6DC0FC49 /* WindowThumbnailView.swift */,
+			);
+			name = UI;
+			path = Sources/SmoothPeek/UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		365E2E97EB9821F7C4BEDFE4 /* SmoothPeek */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B7BCDB16F61A259C48722DF5 /* Build configuration list for PBXNativeTarget "SmoothPeek" */;
+			buildPhases = (
+				B874B786B9801CA26D89E79B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SmoothPeek;
+			packageProductDependencies = (
+			);
+			productName = SmoothPeek;
+			productReference = 2189BB4DD668657BDBC161A2 /* SmoothPeek.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E13F8F2FF4CE5F22BF8B3DD1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					365E2E97EB9821F7C4BEDFE4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = C4CA5CD9DE55D55B647D3061 /* Build configuration list for PBXProject "SmoothPeek" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 413AD50955628C3C121001EA;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 54F65E37F44219FC3D41F85E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				365E2E97EB9821F7C4BEDFE4 /* SmoothPeek */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B874B786B9801CA26D89E79B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				67A9DCB6F4CE3168CD39DE74 /* AppDelegate.swift in Sources */,
+				F5A29F692D96B6D5E83A10D2 /* AppSettings.swift in Sources */,
+				9472F2BF17CE704113B016F8 /* DockAXHelper.swift in Sources */,
+				A4F0C3CC80C9043A332180D6 /* DockMonitor.swift in Sources */,
+				03BD93BD608ADB9D71CE0106 /* PreviewPanelController.swift in Sources */,
+				A88812D8423F5588B76D4B8F /* SettingsView.swift in Sources */,
+				A9560210057731156DC6161A /* SmoothPeekApp.swift in Sources */,
+				BFBC34C03F636E2A57A6D711 /* ThumbnailGenerator.swift in Sources */,
+				CF4AD82BE328A2C9A5332017 /* WindowActivator.swift in Sources */,
+				AC2EE9431D3717943377D5AE /* WindowEnumerator.swift in Sources */,
+				2C7B2C1B9923F5DE6C0F2F3E /* WindowThumbnailView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		021065BFBFBA05C8D1DB1DC7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SmoothPeek.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = SmoothPeek;
+				INFOPLIST_FILE = Sources/SmoothPeek/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_SWIFT_FLAGS = "-parse-as-library";
+				PRODUCT_BUNDLE_IDENTIFIER = com.smoothmac.smoothpeek;
+				PRODUCT_NAME = SmoothPeek;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = MAS_BUILD;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		1A36BF422615B9502036F166 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SmoothPeek.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = SmoothPeek;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INFOPLIST_FILE = Sources/SmoothPeek/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_SWIFT_FLAGS = "-parse-as-library";
+				PRODUCT_BUNDLE_IDENTIFIER = com.smoothmac.smoothpeek;
+				PRODUCT_NAME = SmoothPeek;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		DB53978F99E2E88A7F63E16E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = SmoothPeek.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		F3B6B1D723B1FBCE250218B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = SmoothPeek.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = MAS_BUILD;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B7BCDB16F61A259C48722DF5 /* Build configuration list for PBXNativeTarget "SmoothPeek" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A36BF422615B9502036F166 /* Debug */,
+				021065BFBFBA05C8D1DB1DC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C4CA5CD9DE55D55B647D3061 /* Build configuration list for PBXProject "SmoothPeek" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB53978F99E2E88A7F63E16E /* Debug */,
+				F3B6B1D723B1FBCE250218B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E13F8F2FF4CE5F22BF8B3DD1 /* Project object */;
+}

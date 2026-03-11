@@ -95,12 +95,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Permissions
 
     private func checkPermissions() {
+        // 이미 신뢰된 경우 팝업 없이 즉시 반환
+        guard !AXIsProcessTrusted() else { return }
+
+        // 신뢰되지 않은 경우에만 시스템 TCC 팝업 표시 (prompt: true)
+        // 팝업은 사용자가 시스템 설정에서 직접 허용할 수 있도록 안내한다.
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
-        if !trusted {
-            print("[SmoothPeek] 접근성 권한이 필요합니다.")
-            // 시스템 권한 요청 다이얼로그가 자동으로 표시됨 (prompt: true)
-        }
+        AXIsProcessTrustedWithOptions(options as CFDictionary)
         // 화면 녹화 권한은 ScreenCaptureKit 첫 사용 시 자동 요청됨
     }
 
@@ -138,7 +139,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in self?.previewController?.hide() }
         }
         dockMonitor?.onPermissionError = { [weak self] in
-            Task { @MainActor in self?.showPermissionAlert() }
+            Task { @MainActor in
+                self?.showPermissionAlert()
+                // 권한이 허용될 때까지 1초마다 재시도
+                self?.waitForAccessibilityPermission()
+            }
         }
         previewController?.onWindowSelected = { [weak self] in
             self?.dockMonitor?.resetLastHovered()
@@ -147,6 +152,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.previewController?.containsMouse(at: point) ?? false
         }
         dockMonitor?.start()
+    }
+
+    /// 접근성 권한이 허용될 때까지 1초마다 폴링하다가 허용되면 모니터를 자동 재시작.
+    /// 사용자가 시스템 설정에서 토글을 켠 직후 앱 재시작 없이 동작하게 한다.
+    @MainActor
+    private func waitForAccessibilityPermission() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            guard AXIsProcessTrusted() else { return }
+            timer.invalidate()
+            self.dockMonitor?.stop()
+            self.dockMonitor?.start()
+        }
     }
 
     @MainActor
