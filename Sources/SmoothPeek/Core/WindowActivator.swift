@@ -1,9 +1,22 @@
 import Cocoa
 
+// 창 매칭 전략:
+//
+// Direct 배포 빌드 (기본, MAS_BUILD 미정의):
+//   1순위: _AXUIElementGetWindow (CGWindowID 직접 매칭) — Chrome/Electron 멀티 윈도우 정확
+//   2순위: frame + title fallback
+//
+// App Store 빌드 (-DMAS_BUILD 플래그):
+//   1순위: frame + title 비교 (Private API 없음, App Store 심사 통과)
+//   Chrome 멀티 윈도우 동일 크기인 경우 오매칭 가능성 있음 (MAS 환경의 트레이드오프)
+//
 // kAXWindowIdentifierAttribute 조사 결과 (2026-03):
-// AXWindowIdentifier(-25205, kAXErrorAttributeUnsupported)로 공개 SDK에서 지원되지 않음.
-// _AXUIElementGetWindow Private API 없이 frame + title 비교로 창 매칭을 수행한다.
-// 이 방식은 App Store 샌드박스 환경에서도 동작하며 Private API 심사 거부 위험이 없다.
+//   -25205 (kAXErrorAttributeUnsupported) — 공개 SDK에서 지원되지 않음.
+
+#if !MAS_BUILD
+@_silgen_name("_AXUIElementGetWindow")
+private func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
+#endif
 
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
@@ -86,16 +99,28 @@ enum WindowActivator {
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else { return }
 
+        guard let axWindow = findAXWindow(in: axWindows, matching: window) else { return }
+        AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
+        AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
+    }
+
+    /// AXUIElement 배열에서 WindowInfo에 대응하는 항목을 찾는다.
+    ///
+    /// Direct 빌드: CGWindowID 직접 매칭 (1순위) → frame+title fallback (2순위)
+    /// MAS 빌드: frame+title 매칭만 사용
+    private static func findAXWindow(in axWindows: [AXUIElement], matching window: WindowInfo) -> AXUIElement? {
+#if !MAS_BUILD
+        // 1순위: CGWindowID 직접 매칭 — Chrome/Electron 동일 크기 창도 정확히 구분
         for axWindow in axWindows {
-            if matchesWindow(axWindow, target: window) {
-                AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
-                AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
-                // 앱 엘리먼트의 포커스 윈도우를 명시적으로 지정해
-                // activate() 시 이 윈도우가 최전면으로 오도록 한다.
-                AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
-                break
+            var wid: CGWindowID = 0
+            if _AXUIElementGetWindow(axWindow, &wid) == .success, wid == window.id {
+                return axWindow
             }
         }
+#endif
+        // 2순위(Direct) / 1순위(MAS): frame + title 매칭
+        return axWindows.first { matchesWindow($0, target: window) }
     }
 
     /// AXUIElement와 WindowInfo 매칭.

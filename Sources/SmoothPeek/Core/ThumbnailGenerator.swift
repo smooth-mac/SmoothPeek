@@ -93,19 +93,35 @@ final class ThumbnailGenerator {
 
             guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
                 // 캐시된 SCShareableContent에 해당 윈도우가 없음 — 새로 열린 윈도우일 수 있다.
-                // 캐시를 무효화하면 다음 호출 시 최신 목록으로 재조회하여 SCKit 품질을 즉시 복구한다.
                 cachedShareableContent = nil
                 shareableContentTimestamp = nil
-                // SCShareableContent 재조회 후 재시도
                 return await captureWithSCKitRetry(windowID: windowID, size: size)
             }
 
             return try await captureWindow(scWindow, size: size)
         } catch {
             print("[ThumbnailGenerator] SCKit 캡처 실패: \(error)")
+#if !MAS_BUILD
+            // Direct 빌드: SCKit 실패(권한 거부 등) 시 CGWindowList로 fallback
+            return captureWithCGWindow(windowID: windowID, size: size)
+#else
             return nil
+#endif
         }
     }
+
+#if !MAS_BUILD
+    private func captureWithCGWindow(windowID: CGWindowID, size: CGSize) -> NSImage? {
+        let cgImage = CGWindowListCreateImage(
+            .null,
+            .optionIncludingWindow,
+            windowID,
+            [.boundsIgnoreFraming, .bestResolution]
+        )
+        guard let cgImage else { return nil }
+        return NSImage(cgImage: cgImage, size: size)
+    }
+#endif
 
     /// SCShareableContent 캐시 무효화 후 1회 재시도.
     /// 새로 열린 창이 캐시에 없을 때만 호출된다.

@@ -22,6 +22,7 @@ final class DockMonitor {
     var isMouseOverPanel: ((CGPoint) -> Bool)?
 
     private var mouseMonitor: Any?
+    private var localMouseMonitor: Any?
 
     private var dockPID: pid_t?
     private var dockAXElement: AXUIElement?
@@ -44,6 +45,10 @@ final class DockMonitor {
         if let monitor = mouseMonitor {
             NSEvent.removeMonitor(monitor)
             mouseMonitor = nil
+        }
+        if let monitor = localMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMouseMonitor = nil
         }
     }
 
@@ -75,11 +80,19 @@ final class DockMonitor {
             return
         }
 
-        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            // NSEvent.mouseLocation은 NS 좌표계(좌하단 원점).
-            // handleMouseMoved는 CG 좌표계(좌상단 원점)를 기대하므로 변환한다.
-            let nsPoint = event.locationInWindow != .zero ? event.locationInWindow : NSEvent.mouseLocation
-            self?.handleMouseMoved(Self.nsToCG(nsPoint))
+        // 글로벌 모니터: 다른 앱(Dock 포함) 위에서의 마우스 이동 감지
+        // NSEvent.mouseLocation을 항상 사용한다.
+        // (event.locationInWindow은 이벤트 수신 앱 창의 로컬 좌표이므로 화면 좌표가 아님)
+        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            self?.handleMouseMoved(Self.nsToCG(NSEvent.mouseLocation))
+        }
+
+        // 로컬 모니터: SmoothPeek 자신의 패널 위에서의 마우스 이동 감지
+        // addGlobalMonitorForEvents는 자신의 앱 창에서 발생한 이벤트를 수신하지 않으므로
+        // 패널 위에서도 handleMouseMoved가 호출되어 isMouseOverPanel 체크가 이루어진다.
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            self?.handleMouseMoved(Self.nsToCG(NSEvent.mouseLocation))
+            return event
         }
 
         if mouseMonitor == nil {

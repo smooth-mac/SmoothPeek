@@ -24,9 +24,9 @@
     <key>CFBundleSignature</key>
     <string>????</string>
 
-    <!-- Minimum OS -->
+    <!-- Minimum OS — macOS 14.0 (ScreenCaptureKit full API + MAS requirement) -->
     <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
+    <string>14.0</string>
 
     <!-- UI -->
     <key>NSPrincipalClass</key>

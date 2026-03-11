@@ -29,11 +29,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
             // Assets.xcassets의 StatusBarIcon 이미지셋을 로드한다.
-            // isTemplate = true 로 설정하면 macOS가 다크/라이트 모드에서
-            // 자동으로 색상을 반전시켜 시스템 상태바 스타일에 맞춰 준다.
-            let icon = NSImage(named: "StatusBarIcon")
-            icon?.isTemplate = true
-            button.image = icon
+            // PNG 빌드 전(SVG만 있는 경우) SF Symbol로 폴백한다.
+            if let icon = NSImage(named: "StatusBarIcon") {
+                icon.isTemplate = true
+                button.image = icon
+            } else {
+                button.image = NSImage(systemSymbolName: "macwindow.on.rectangle",
+                                       accessibilityDescription: "SmoothPeek")
+            }
             button.action = #selector(statusBarClicked)
             button.target = self
         }

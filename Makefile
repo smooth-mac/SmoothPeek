@@ -42,10 +42,18 @@ APPLE_TEAM_ID    ?=
 APP_PASSWORD     ?=
 NOTARIZE         ?= 0
 
+# Xcode 프로젝트 관련 설정
+XCODE_PROJECT   := $(PROJECT_ROOT)/SmoothPeek.xcodeproj
+XCODE_SCHEME    := SmoothPeek
+TEAM_ID         := W9U59XWU3W
+ARCHIVE_PATH    := $(PROJECT_ROOT)/dist/SmoothPeek.xcarchive
+EXPORT_PATH     := $(PROJECT_ROOT)/dist/mas-export
+
 # --------------------------------------------------------------------------
 # PHONY 선언
 # --------------------------------------------------------------------------
-.PHONY: all build icons bundle sign dmg release clean verify run help
+.PHONY: all build icons bundle sign dmg release clean verify run help \
+        xcode-gen xcode-build xcode-archive xcode-export xcode-sandbox-verify xcode-clean
 
 # --------------------------------------------------------------------------
 # 기본 타겟
@@ -134,6 +142,115 @@ release:
 		bash "$(SCRIPTS_DIR)/build_release.sh"
 
 # --------------------------------------------------------------------------
+# xcode-gen — project.yml → SmoothPeek.xcodeproj 재생성
+# --------------------------------------------------------------------------
+xcode-gen:
+	@echo ""
+	@echo "==> Regenerating Xcode project from project.yml..."
+	xcodegen generate --spec "$(PROJECT_ROOT)/project.yml"
+	@echo "    Created: $(XCODE_PROJECT)"
+
+# --------------------------------------------------------------------------
+# xcode-build — Xcode Debug 빌드 (서명 없음, 컴파일 검증용)
+# --------------------------------------------------------------------------
+xcode-build:
+	@echo ""
+	@echo "==> Xcode Debug build (unsigned, compile check)..."
+	xcodebuild \
+		-project "$(XCODE_PROJECT)" \
+		-scheme "$(XCODE_SCHEME)" \
+		-configuration Debug \
+		-destination "platform=macOS" \
+		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		build 2>&1 | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)|note:" | grep -v "^$$"
+
+# --------------------------------------------------------------------------
+# xcode-archive — MAS 제출용 Archive 생성 (Apple Development 인증서 필요)
+#
+# MAS 제출은 xcodebuild archive → xcodebuild -exportArchive 두 단계로 진행.
+# 팀 ID: TEAM_ID 변수 (기본: W9U59XWU3W)
+# --------------------------------------------------------------------------
+xcode-archive:
+	@echo ""
+	@echo "==> Creating Xcode Archive for MAS submission..."
+	@mkdir -p "$(PROJECT_ROOT)/dist"
+	xcodebuild archive \
+		-project "$(XCODE_PROJECT)" \
+		-scheme "$(XCODE_SCHEME)" \
+		-configuration Release \
+		-destination "generic/platform=macOS" \
+		-archivePath "$(ARCHIVE_PATH)" \
+		DEVELOPMENT_TEAM="$(TEAM_ID)" \
+		CODE_SIGN_STYLE=Automatic \
+		2>&1 | grep -E "error:|warning:|ARCHIVE (SUCCEEDED|FAILED)|Archive" | grep -v "^$$"
+	@echo ""
+	@echo "    Archive: $(ARCHIVE_PATH)"
+	@ls -la "$(ARCHIVE_PATH)" 2>/dev/null || echo "    WARNING: Archive not found"
+
+# --------------------------------------------------------------------------
+# xcode-export — Archive → MAS IPA/pkg 내보내기
+#
+# ExportOptions.plist가 필요합니다. scripts/ExportOptions.plist 를 참조하세요.
+# --------------------------------------------------------------------------
+xcode-export:
+	@if [ ! -d "$(ARCHIVE_PATH)" ]; then \
+		echo ""; \
+		echo "ERROR: Archive not found at $(ARCHIVE_PATH)"; \
+		echo "  Run 'make xcode-archive' first."; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "==> Exporting Archive for Mac App Store..."
+	@mkdir -p "$(EXPORT_PATH)"
+	xcodebuild -exportArchive \
+		-archivePath "$(ARCHIVE_PATH)" \
+		-exportPath "$(EXPORT_PATH)" \
+		-exportOptionsPlist "$(PROJECT_ROOT)/scripts/ExportOptions.plist" \
+		2>&1 | grep -E "error:|warning:|EXPORT (SUCCEEDED|FAILED)" | grep -v "^$$"
+	@echo ""
+	@echo "    Exported to: $(EXPORT_PATH)"
+	@ls -la "$(EXPORT_PATH)/" 2>/dev/null || true
+
+# --------------------------------------------------------------------------
+# xcode-sandbox-verify — 빌드된 Debug .app의 sandbox/entitlement 적용 확인
+# --------------------------------------------------------------------------
+xcode-sandbox-verify:
+	@echo ""
+	@echo "==> Verifying Sandbox & Entitlements on Xcode Debug build..."
+	@APP_PATH=$$(xcodebuild -project "$(XCODE_PROJECT)" -scheme "$(XCODE_SCHEME)" \
+		-configuration Debug -showBuildSettings 2>/dev/null \
+		| grep " BUILT_PRODUCTS_DIR " | awk '{print $$3}'); \
+	APP_BUNDLE="$$APP_PATH/SmoothPeek.app"; \
+	BINARY="$$APP_BUNDLE/Contents/MacOS/SmoothPeek"; \
+	if [ ! -f "$$BINARY" ]; then \
+		echo "  ERROR: Binary not found. Run 'make xcode-build' first."; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "  App bundle: $$APP_BUNDLE"; \
+	echo ""; \
+	echo "  --- Code Signature ---"; \
+	codesign -dvvv "$$APP_BUNDLE" 2>&1 | grep -E "Identifier|TeamID|Flags|Entitlements" || true; \
+	echo ""; \
+	echo "  --- Entitlements embedded in binary ---"; \
+	codesign -d --entitlements - "$$APP_BUNDLE" 2>/dev/null \
+		| xmllint --format - 2>/dev/null || codesign -d --entitlements - "$$APP_BUNDLE" 2>&1 || true; \
+	echo ""
+
+# --------------------------------------------------------------------------
+# xcode-clean — Xcode DerivedData 및 Archive 정리
+# --------------------------------------------------------------------------
+xcode-clean:
+	@echo ""
+	@echo "==> Cleaning Xcode DerivedData..."
+	rm -rf ~/Library/Developer/Xcode/DerivedData/SmoothPeek-*
+	rm -rf "$(ARCHIVE_PATH)" "$(EXPORT_PATH)"
+	@echo "    Done."
+
+# --------------------------------------------------------------------------
 # clean — 빌드 아티팩트 및 dist 폴더 삭제
 # --------------------------------------------------------------------------
 clean:
@@ -191,29 +308,44 @@ help:
 	@echo ""
 	@echo "Usage: make [target] [VAR=value ...]"
 	@echo ""
-	@echo "Targets:"
+	@echo "--- SPM 기반 타겟 (Direct / Developer ID 배포) ---"
 	@echo "  build       swift build -c release (실행 파일만)"
 	@echo "  icons       SVG → PNG/ICNS 아이콘 생성 (brew install librsvg 필요)"
 	@echo "  bundle      .app 번들 생성 (서명 없음)"
 	@echo "  sign        .app 번들 + 코드서명"
 	@echo "  dmg         .app 번들 + DMG 패키징"
 	@echo "  release     서명 + 공증 + 스테이플 + DMG (전체 파이프라인)"
-	@echo "  clean       빌드 아티팩트 제거 (.build, dist)"
 	@echo "  verify      기존 번들/DMG 서명 상태 확인"
 	@echo "  run         디버그 빌드 후 즉시 실행"
-	@echo "  help        이 도움말 출력"
+	@echo "  clean       빌드 아티팩트 제거 (.build, dist)"
+	@echo ""
+	@echo "--- Xcode 기반 타겟 (Mac App Store 제출) ---"
+	@echo "  xcode-gen             project.yml → SmoothPeek.xcodeproj 재생성"
+	@echo "  xcode-build           Xcode Debug 빌드 (서명 없음, 컴파일 검증)"
+	@echo "  xcode-sandbox-verify  Debug 빌드의 sandbox/entitlement 적용 확인"
+	@echo "  xcode-archive         MAS 제출용 Archive 생성 (.xcarchive)"
+	@echo "  xcode-export          Archive → MAS .pkg 내보내기"
+	@echo "  xcode-clean           Xcode DerivedData 및 Archive 정리"
 	@echo ""
 	@echo "Variables:"
 	@echo "  DEVELOPER_ID_APP   \"Developer ID Application: Name (TEAMID)\""
+	@echo "  TEAM_ID            Apple 팀 ID (10자리, 기본: W9U59XWU3W)"
 	@echo "  NOTARIZE           1 로 설정하면 공증 수행"
 	@echo "  NOTARY_PROFILE     xcrun notarytool keychain profile (권장)"
 	@echo "  APPLE_ID           Apple ID 이메일"
-	@echo "  APPLE_TEAM_ID      Apple 팀 ID (10자리)"
+	@echo "  APPLE_TEAM_ID      Apple 팀 ID (keychain profile 미사용 시)"
 	@echo "  APP_PASSWORD       앱 전용 암호"
 	@echo ""
+	@echo "MAS 제출 순서:"
+	@echo "  1. make xcode-gen           (최초 또는 project.yml 변경 시)"
+	@echo "  2. make xcode-build         (컴파일 검증)"
+	@echo "  3. make xcode-archive       (배포 Archive 생성)"
+	@echo "  4. make xcode-export        (MAS .pkg 내보내기)"
+	@echo "  5. Transporter 또는 Xcode Organizer로 App Store Connect에 업로드"
+	@echo ""
 	@echo "Examples:"
-	@echo "  make build"
-	@echo "  make dmg"
-	@echo "  make dmg DEVELOPER_ID_APP=\"Developer ID Application: Juho Lee (XXXXXXXXXX)\""
+	@echo "  make xcode-build"
+	@echo "  make xcode-archive TEAM_ID=W9U59XWU3W"
+	@echo "  make dmg DEVELOPER_ID_APP=\"Developer ID Application: Juho Lee (W9U59XWU3W)\""
 	@echo "  make release DEVELOPER_ID_APP=\"...\" NOTARIZE=1 NOTARY_PROFILE=\"SmoothPeek-Notary\""
 	@echo ""
