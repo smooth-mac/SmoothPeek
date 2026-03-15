@@ -84,6 +84,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeSettingsWindow() -> NSWindow {
         let host = NSHostingController(rootView: SettingsView())
+        // Form + .formStyle(.grouped)은 내부적으로 NSScrollView를 사용하므로
+        // intrinsic height가 0이 된다. preferredContentSize를 명시적으로 지정한다.
+        host.preferredContentSize = NSSize(width: 420, height: 560)
         let window = NSWindow(contentViewController: host)
         window.title = "SmoothPeek 환경설정"
         window.styleMask = [.titled, .closable, .miniaturizable]

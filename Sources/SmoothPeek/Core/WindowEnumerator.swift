@@ -10,10 +10,11 @@ struct WindowInfo: Identifiable {
 }
 
 enum WindowEnumerator {
-    /// 앱의 윈도우 목록을 반환한다 (화면에 표시된 윈도우 + 최소화 윈도우 포함).
+    /// 앱의 윈도우 목록을 반환한다.
     ///
     /// - 화면에 표시된 윈도우: `.optionOnScreenOnly` + `.excludeDesktopElements` 쿼리로 수집
-    /// - 최소화 윈도우: `.excludeDesktopElements` 단독 쿼리에서 `kCGWindowIsOnscreen == false` 인 항목으로 수집
+    /// - 최소화 윈도우: `AppSettings.showMinimizedWindows` 설정이 true일 때만 포함.
+    ///   `.excludeDesktopElements` 단독 쿼리에서 `kCGWindowIsOnscreen == false` 인 항목으로 수집
     /// - 두 결과를 합산해 중복 ID를 제거한 뒤 반환한다.
     static func windows(for app: NSRunningApplication) -> [WindowInfo] {
         let pid = app.processIdentifier
@@ -24,6 +25,16 @@ enum WindowEnumerator {
             options: [.optionOnScreenOnly, .excludeDesktopElements],
             isMinimized: false
         )
+
+        // showMinimizedWindows 설정을 UserDefaults에서 직접 읽어 @MainActor 경계를 넘지 않는다.
+        // AppSettings.Keys.showMinimizedWindows 상수를 사용하여 키 일관성을 유지한다.
+        let includeMinimized = UserDefaults.standard.object(forKey: AppSettings.Keys.showMinimizedWindows)
+            .flatMap { $0 as? Bool }
+            ?? AppSettings.Defaults.showMinimizedWindows
+
+        guard includeMinimized else {
+            return onScreenWindows.sorted { $0.id < $1.id }
+        }
 
         // `.excludeDesktopElements` 단독 쿼리: 온스크린 + 오프스크린을 모두 가져온다.
         // 여기서 kCGWindowIsOnscreen == false인 항목만 최소화 윈도우로 취급한다.

@@ -69,10 +69,14 @@ final class PreviewPanelController {
         // 이 시점의 panel.frame.size가 실제 최종 크기에 가장 근접하다.
         positionPanel(panel, near: app)
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Animation.fadeInDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().alphaValue = 1
+        if AppSettings.shared.animationEnabled {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = Animation.fadeInDuration
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().alphaValue = 1
+            }
+        } else {
+            panel.alphaValue = 1
         }
     }
 
@@ -99,23 +103,27 @@ final class PreviewPanelController {
         }
 
         currentApp = nil
-        isFadingOut = true
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Animation.fadeOutDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        } completionHandler: { [weak self] in
-            // completionHandler는 Sendable 컨텍스트로 취급되므로
-            // @MainActor 프로퍼티 접근을 MainActor.run 안에서 수행한다
-            Task { @MainActor [weak self] in
-                guard let self, self.isFadingOut else {
-                    // show()가 중간에 호출되어 플래그가 리셋된 경우 — orderOut 하지 않음
-                    return
+        if AppSettings.shared.animationEnabled {
+            isFadingOut = true
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = Animation.fadeOutDuration
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                panel.animator().alphaValue = 0
+            } completionHandler: { [weak self] in
+                // completionHandler는 Sendable 컨텍스트로 취급되므로
+                // @MainActor 프로퍼티 접근을 MainActor.run 안에서 수행한다
+                Task { @MainActor [weak self] in
+                    guard let self, self.isFadingOut else {
+                        // show()가 중간에 호출되어 플래그가 리셋된 경우 — orderOut 하지 않음
+                        return
+                    }
+                    self.isFadingOut = false
+                    panel.orderOut(nil)
                 }
-                self.isFadingOut = false
-                panel.orderOut(nil)
             }
+        } else {
+            panel.orderOut(nil)
         }
     }
 
