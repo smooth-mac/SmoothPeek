@@ -106,8 +106,7 @@ struct SettingsView: View {
             HStack {
                 Spacer()
                 Button("업데이트 확인") {
-                    // TODO: Sparkle integration (P3-6)
-                    print("[SmoothPeek] 업데이트 확인 버튼 클릭 — Sparkle 연동 예정")
+                    UpdateManager.shared.checkForUpdates()
                 }
                 .buttonStyle(.bordered)
                 Spacer()

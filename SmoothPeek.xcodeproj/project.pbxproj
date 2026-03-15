@@ -18,6 +18,7 @@
 		BFBC34C03F636E2A57A6D711 /* ThumbnailGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62506C908936DFECF11A20A2 /* ThumbnailGenerator.swift */; };
 		CF4AD82BE328A2C9A5332017 /* WindowActivator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B006BFD5C78BCA61CFEF5BCF /* WindowActivator.swift */; };
 		F5A29F692D96B6D5E83A10D2 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */; };
+		E1C847A2F3D509B8A7F620C3 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D91F6A2E4C78A510F3D892 /* UpdateManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 		4C55B75527F5A7FF6ACF9907 /* SmoothPeekApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmoothPeekApp.swift; sourceTree = "<group>"; };
 		62506C908936DFECF11A20A2 /* ThumbnailGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailGenerator.swift; sourceTree = "<group>"; };
 		74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		B3D91F6A2E4C78A510F3D892 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		848E766110CD4A8580DE2D2C /* DockAXHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockAXHelper.swift; sourceTree = "<group>"; };
 		97FA533BFD30F31FF4B40116 /* PreviewPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPanelController.swift; sourceTree = "<group>"; };
 		9E746D1CB8D8584CFFBE8A34 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 				9E746D1CB8D8584CFFBE8A34 /* AppDelegate.swift */,
 				74CF33ADF9D3C9704491F9A2 /* AppSettings.swift */,
 				4C55B75527F5A7FF6ACF9907 /* SmoothPeekApp.swift */,
+				B3D91F6A2E4C78A510F3D892 /* UpdateManager.swift */,
 			);
 			name = App;
 			path = Sources/SmoothPeek/App;
@@ -150,6 +153,7 @@
 			files = (
 				67A9DCB6F4CE3168CD39DE74 /* AppDelegate.swift in Sources */,
 				F5A29F692D96B6D5E83A10D2 /* AppSettings.swift in Sources */,
+				E1C847A2F3D509B8A7F620C3 /* UpdateManager.swift in Sources */,
 				9472F2BF17CE704113B016F8 /* DockAXHelper.swift in Sources */,
 				A4F0C3CC80C9043A332180D6 /* DockMonitor.swift in Sources */,
 				03BD93BD608ADB9D71CE0106 /* PreviewPanelController.swift in Sources */,
