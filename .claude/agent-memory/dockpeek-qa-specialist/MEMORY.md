@@ -13,8 +13,10 @@
 - `ThumbnailGenerator`: @MainActor singleton; SCKit-only (CGWindowListCreateImage removed); two-level cache (0.5s thumbnail TTL, 2.5s SCShareableContent TTL)
 - `PreviewPanelController`: @MainActor; NSAnimationContext fade animations with `isFadingOut` guard flag
 - `AppSettings`: @MainActor ObservableObject singleton backed by @AppStorage; hoverDelay also read directly from UserDefaults in DockMonitor to avoid @MainActor isolation
-- `DockAXHelper`: stateless enum with static helpers for AX frame extraction, bundle ID lookup, dock icon traversal
-- `WindowActivator`: frame+title matching only (no _AXUIElementGetWindow private API); tolerance 4pt
+- `DockAXHelper`: stateless enum; axFrame(of:) → NS coords (AppKit); axFrameInCGCoordinates(of:) → CG coords (CGWindowList/mouse hit-test). Both methods must be used in appropriate contexts.
+- `WindowActivator`: Direct build uses _AXUIElementGetWindow (primary) + matchesWindow fallback (CG coords); MAS build uses matchesWindow only; tolerance 4pt
+- `WindowEnumerator`: WindowInfo.frame is always CG coordinates. onScreen windows from CGWindowList; minimized from CGWindowList offscreen; other-space from AX+_AXUIElementGetWindow (Direct only, #if !MAS_BUILD)
+- `WindowInfo.isOnAnotherSpace`: Direct build only; collectOtherSpaceWindows uses private _AXUIElementGetWindow to identify windows not in CGWindowList and not minimized
 
 ## Coordinate System — Critical Notes
 - NSEvent.mouseLocation: NS coordinates (bottom-left origin, Y increases upward)
@@ -32,6 +34,7 @@
 - SMAppService in App Store sandbox: needs LoginItems entitlement/helper app structure; current implementation will always fail in MAS builds.
 - titleMatches() overbroad: empty-title AX windows return true unconditionally — first minimized window selected.
 - applyLaunchAtLogin didSet re-entrancy: not guarded by flag but effectively harmless (confirmed).
+- matchesWindow() coordinate mismatch (FIXED in P3-3 QA): was comparing AX pos (NS coords) vs WindowInfo.frame (CG coords) directly — Y offset of ~screenHeight caused fallback matching to always fail. Fixed by using DockAXHelper.axFrameInCGCoordinates(of:) in matchesWindow. This bug was latent since Phase 2 but masked by _AXUIElementGetWindow primary path.
 
 ## App Store Port Status (commit 1237dca → current main) — FAIL
 - locationInWindow coordinate bug FIXED (now uses NSEvent.mouseLocation exclusively)
@@ -45,7 +48,7 @@
 ## Performance Baselines
 - SCShareableContent query: 50–200ms on macOS 14+ with many open windows (hence 2.5s TTL cache)
 - Thumbnail cache: FIFO eviction at 50 entries; O(n) removeFirst() — fine at 50
-- WindowEnumerator makes 2 CGWindowList queries when minimized window support enabled
+- WindowEnumerator makes 2 CGWindowList queries always (allWindowsDict queried unconditionally for collectOtherSpaceWindows even when includeMinimized==false)
 - AX IPC cost: ~2 full Dock tree traversals per hover event (DockMonitor + PreviewPanelController) — ~20 AX IPC round trips for 10-app Dock
 
 ## Phase History
@@ -55,6 +58,7 @@
 - Commit cf4c186 (Phase 2 QA fixes): resolved panel stability, window matching, sizing
 - Commit 1237dca (App Store port): FAIL — 3 Critical, 3 High issues
 - Full source review (2026-03-11): FAIL — 2 Critical, 4 High, 6 Medium, 4 Low
+- P3-3 (coordinate fix) + P3-1 (multi-space windows) QA (2026-03-15): PASS WITH CONDITIONS — 1 High bug fixed (matchesWindow coord mismatch), 2 Medium informational
 
 ## Links to Detail Files
 - See `patterns.md` for detailed coding conventions

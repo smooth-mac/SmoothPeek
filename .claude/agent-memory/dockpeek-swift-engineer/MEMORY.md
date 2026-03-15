@@ -39,17 +39,19 @@
 - Cache eviction helper extracted into `storeThumbnailInCache()` to keep `thumbnail(for:size:)` readable.
 
 ## WindowInfo Model
-- Fields: `id: CGWindowID`, `title: String`, `frame: CGRect`, `isMinimized: Bool`, `pid: pid_t`
+- Fields: `id: CGWindowID`, `title: String`, `frame: CGRect`, `isMinimized: Bool`, `isOnAnotherSpace: Bool`, `pid: pid_t`
 - `isOnScreen` was removed in P2-1 (never used outside the enumerator).
 - `isMinimized` added in P2-1; used by ThumbnailGenerator (skip capture) and WindowThumbnailCard (badge UI).
+- `isOnAnotherSpace` added in P3-1; used by WindowThumbnailCard (badge UI) and WindowActivator.
 
-## WindowEnumerator Strategy (P2-1)
-- Two-pass CGWindowList query:
-  1. `[.optionOnScreenOnly, .excludeDesktopElements]` -> normal visible windows (`isMinimized: false`)
-  2. `.excludeDesktopElements` only -> filter `kCGWindowIsOnscreen == false && layer == 0` -> minimized windows
-- Deduplicate by window ID (Set of on-screen IDs).
-- Other-Space windows are also `isOnscreen == false` but CGWindowList typically does not expose them;
-  cross-Space filtering is deferred to P2-2.
+## WindowEnumerator Strategy (P2-1 / P3-1)
+- Three-pass collection:
+  1. `[.optionOnScreenOnly, .excludeDesktopElements]` -> normal visible windows (`isMinimized: false`, `isOnAnotherSpace: false`)
+  2. `.excludeDesktopElements` only -> filter `kCGWindowIsOnscreen == false && layer == 0` -> minimized windows (when showMinimizedWindows)
+  3. Direct build only: AX `kAXWindowsAttribute` + `_AXUIElementGetWindow` -> IDs not in pass 1/2 that are non-minimized -> `isOnAnotherSpace: true`
+- `_AXUIElementGetWindow` private API declared in `WindowEnumerator.swift` under `#if !MAS_BUILD`.
+- MAS build: `collectOtherSpaceWindows` returns `[]` unconditionally.
+- Other-space window frame/title extracted from AX API; `DockAXHelper.axFrameInCGCoordinates(of:)` used for coordinate conversion.
 
 ## WindowActivator: Minimized Window Restoration
 - Minimized windows have no AX position/size, so frame-based `matchesWindow` fails for them.
@@ -110,6 +112,13 @@
 - `@available(macOS 14.0, *)` guards on `captureWithSCKit` removed — whole class is 14+ now.
 - `cachedShareableContent: Any?` boxing pattern retained (stored property @available restriction).
 
+## DockAXHelper: Coordinate System (P3-3)
+- `axFrame(of:)` — returns NS coordinate system (bottom-left origin). Use with AppKit APIs (NSPanel.setFrameOrigin).
+- `axFrameInCGCoordinates(of:)` — converts NS → CG (top-left origin) using primary screen height.
+  Formula: `cgY = screenHeight - nsY - frameHeight`. Use when comparing with CGWindowList frames or mouse events.
+- `DockMonitor.findHoveredDockApp` uses `axFrameInCGCoordinates` (was incorrectly using `axFrame` before P3-3).
+- `PreviewPanelController.findDockIconFrame` uses `axFrame` (NS coords for setFrameOrigin — correct).
+
 ## DockMonitor: NSEvent (MAS port)
 - **CGEventTap completely removed** — replaced with `NSEvent.addGlobalMonitorForEvents(.mouseMoved)`.
 - NSEvent monitor is MAS sandbox compatible; no Input Monitoring permission needed.
@@ -118,12 +127,14 @@
 - `AXIsProcessTrusted()` check in `setupMouseMonitor()` — fires `onPermissionError` if false.
 - `stop()` calls `NSEvent.removeMonitor()` instead of `CGEvent.tapEnable(tap:enable:false)`.
 
-## WindowActivator: Private API Removed (MAS port)
-- `@_silgen_name("_AXUIElementGetWindow")` **removed** — Private API banned in MAS.
+## WindowActivator: Private API Removed (MAS port) / Other-Space Support (P3-1)
+- `@_silgen_name("_AXUIElementGetWindow")` **removed from WindowActivator** — Private API banned in MAS.
+  Still used in `WindowEnumerator.swift` under `#if !MAS_BUILD` for other-space detection.
 - **kAXWindowIdentifierAttribute investigation result**: not in public SDK (AXWindowIdentifier
   returns -25205 kAXErrorAttributeUnsupported at runtime). Cannot replace private API.
 - frame + title comparison is now the sole matching strategy (was previously fallback).
 - `app.activate(options: [.activateIgnoringOtherApps])` → `app.activate()` (deprecated macOS 14).
+- `isOnAnotherSpace` branch: `raiseWindow` + `activate()` (no 80ms re-raise); macOS auto-switches Space on raise.
 
 ## SettingsView: macOS 14 API (MAS port)
 - `onChange(of:)` updated to two-parameter form `{ _, newValue in }` (macOS 14+).
