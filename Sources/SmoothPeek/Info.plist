@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Identity -->
+    <key>CFBundleIdentifier</key>
+    <string>com.smoothmac.smoothpeek</string>
+    <key>CFBundleName</key>
+    <string>SmoothPeek</string>
+    <key>CFBundleDisplayName</key>
+    <string>SmoothPeek</string>
+    <key>CFBundleExecutable</key>
+    <string>SmoothPeek</string>
+
+    <!-- Version -->
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <!-- Bundle Type -->
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <!-- Minimum OS — macOS 14.0 (ScreenCaptureKit full API + MAS requirement) -->
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+
+    <!-- UI -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSMainStoryboardFile</key>
+    <string></string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <!-- Dock / Menu Bar -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- Privacy — Accessibility (required for AXUIElement window activation) -->
+    <key>NSAccessibilityUsageDescription</key>
+    <string>SmoothPeek uses Accessibility APIs to detect which window you want to bring forward when clicking a thumbnail in the preview panel.</string>
+
+    <!-- Privacy — Screen Recording (required for ScreenCaptureKit thumbnails) -->
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>SmoothPeek captures window thumbnails to display live previews when you hover over Dock icons.</string>
+
+    <!-- Copyright -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 Juho Lee. All rights reserved.</string>
+</dict>
+</plist>

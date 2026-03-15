@@ -7,6 +7,10 @@
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
+# xcodeproj는 xcodegen으로 재생성 가능 — project.pbxproj만 추적한다.
+# project.xcworkspace/xcshareddata/swiftpm 은 SPM resolve 결과이므로 무시
+SmoothPeek.xcodeproj/project.xcworkspace/xcshareddata/
+SmoothPeek.xcodeproj/project.xcworkspace/xcuserdata/
 *.moved-aside
 *.pbxuser
 !default.pbxuser
@@ -24,3 +28,9 @@ DerivedData/
 
 # Claude
 .claude/settings.local.json
+
+# Build artifacts
+dist/
+
+# Swift Package Manager (generated)
+.swiftpm/

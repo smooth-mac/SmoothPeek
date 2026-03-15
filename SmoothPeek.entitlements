@@ -2,22 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- 샌드박스 OFF: CGEventTap, AXUIElement 접근에 필수 -->
+    <!-- App Sandbox 활성화 (Mac App Store 필수 요건) -->
     <key>com.apple.security.app-sandbox</key>
-    <false/>
+    <true/>
 
-    <!-- 접근성 API (AXUIElement) -->
+    <!-- 접근성 API (AXUIElement — Dock 아이콘 탐색, 창 활성화) -->
     <key>com.apple.security.accessibility</key>
     <true/>
 
-    <!-- 화면 캡처 (ScreenCaptureKit) -->
+    <!-- 화면 캡처 (ScreenCaptureKit — 윈도우 썸네일 생성) -->
     <key>com.apple.security.screen-capture</key>
     <true/>
-
-    <!-- 임시 예외: CGWindowListCreateImage 사용 시 (deprecated, ScreenCaptureKit 권장) -->
-    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-    <array>
-        <string>com.apple.screencapture</string>
-    </array>
 </dict>
 </plist>

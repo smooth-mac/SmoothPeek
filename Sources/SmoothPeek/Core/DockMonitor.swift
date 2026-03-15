@@ -4,9 +4,15 @@ import ApplicationServices
 /// Dock 위의 마우스 움직임을 감지하여 호버 중인 앱을 알려주는 클래스.
 ///
 /// 동작 원리:
-/// 1. CGEventTap으로 전역 mouseMoved 이벤트를 수신
+/// 1. NSEvent.addGlobalMonitorForEvents(.mouseMoved)으로 전역 마우스 이벤트 수신
+///    (App Store 샌드박스 호환; Input Monitoring 권한 불필요)
 /// 2. 마우스가 Dock 영역에 들어오면 AXUIElement로 Dock 아이콘 목록을 탐색
 /// 3. 아이콘의 AXFrame과 마우스 위치를 비교해 호버 중인 앱 식별
+///
+/// ## 좌표계 변환
+/// NSEvent.mouseLocation은 NS 좌표계(좌하단 원점, y 위로 증가)를 반환한다.
+/// DockAXHelper.axFrame 및 isMouseOverPanel 콜백은 CG 좌표계(좌상단 원점, y 아래로 증가)를
+/// 기대하므로, primaryScreenHeight - nsY 변환을 통해 CG 좌표로 통일한다.
 final class DockMonitor {
     var onAppHovered: ((String?, NSRunningApplication?) -> Void)?
     var onHoverEnded: (() -> Void)?
@@ -15,31 +21,35 @@ final class DockMonitor {
     /// 패널 위에 있는 동안은 hoverEnd 타이머를 시작하지 않는다.
     var isMouseOverPanel: ((CGPoint) -> Bool)?
 
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private var mouseMonitor: Any?
+    private var localMouseMonitor: Any?
 
     private var dockPID: pid_t?
     private var dockAXElement: AXUIElement?
 
     private var lastHoveredBundleID: String?
     private var hoverTimer: Timer?
+    // 마우스가 미리보기 패널 위에 있는 동안 true.
+    // Dock → 패널 이동 중 lastHoveredBundleID 가 nil 로 초기화된 뒤에도
+    // 패널 밖으로 나가면 hide 가 정상 스케줄되도록 보조 플래그로 사용한다.
+    private var isHoveringPanel = false
 
     // MARK: - Lifecycle
 
     func start() {
         findDock()
-        setupEventTap()
+        setupMouseMonitor()
     }
 
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
+        if let monitor = mouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseMonitor = nil
         }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        if let monitor = localMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMouseMonitor = nil
         }
-        eventTap = nil
-        runLoopSource = nil
     }
 
     // MARK: - Dock 찾기
@@ -55,50 +65,72 @@ final class DockMonitor {
         dockAXElement = AXUIElementCreateApplication(dock.processIdentifier)
     }
 
-    // MARK: - CGEventTap 설정
+    // MARK: - NSEvent 전역 모니터 설정
+    //
+    // NSEvent.addGlobalMonitorForEvents는 App Store 샌드박스에서 허용된다.
+    // CGEventTap (.cghidEventTap)은 Input Monitoring 권한을 요구하며 샌드박스와 충돌한다.
 
-    private func setupEventTap() {
-        let eventMask: CGEventMask = (1 << CGEventType.mouseMoved.rawValue)
-
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        eventTap = CGEvent.tapCreate(
-            tap: .cghidEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: eventMask,
-            callback: { _, _, event, refcon -> Unmanaged<CGEvent>? in
-                guard let refcon else { return Unmanaged.passUnretained(event) }
-                let monitor = Unmanaged<DockMonitor>.fromOpaque(refcon).takeUnretainedValue()
-                monitor.handleMouseMoved(event.location)
-                return Unmanaged.passUnretained(event)
-            },
-            userInfo: selfPtr
-        )
-
-        guard let tap = eventTap else {
-            print("[DockMonitor] CGEventTap 생성 실패 — 접근성 권한을 확인하세요.")
+    private func setupMouseMonitor() {
+        // AXUIElement 접근 가능 여부 확인 — 불가 시 권한 오류 콜백 발생
+        guard AXIsProcessTrusted() else {
+            print("[DockMonitor] 접근성 권한 없음 — AX 기반 Dock 호버 감지 불가.")
             DispatchQueue.main.async { [weak self] in
                 self?.onPermissionError?()
             }
             return
         }
 
-        runLoopSource = CFMachPortCreateRunLoopSource(nil, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
+        // 글로벌 모니터: 다른 앱(Dock 포함) 위에서의 마우스 이동 감지
+        // NSEvent.mouseLocation을 항상 사용한다.
+        // (event.locationInWindow은 이벤트 수신 앱 창의 로컬 좌표이므로 화면 좌표가 아님)
+        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            self?.handleMouseMoved(Self.nsToCG(NSEvent.mouseLocation))
+        }
+
+        // 로컬 모니터: SmoothPeek 자신의 패널 위에서의 마우스 이동 감지
+        // addGlobalMonitorForEvents는 자신의 앱 창에서 발생한 이벤트를 수신하지 않으므로
+        // 패널 위에서도 handleMouseMoved가 호출되어 isMouseOverPanel 체크가 이루어진다.
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            self?.handleMouseMoved(Self.nsToCG(NSEvent.mouseLocation))
+            return event
+        }
+
+        if mouseMonitor == nil {
+            print("[DockMonitor] NSEvent 전역 모니터 등록 실패 — 접근성 권한을 확인하세요.")
+            DispatchQueue.main.async { [weak self] in
+                self?.onPermissionError?()
+            }
+        }
+    }
+
+    // MARK: - 좌표 변환
+
+    /// NS 좌표계(좌하단 원점) → CG 좌표계(좌상단 원점) 변환.
+    ///
+    /// primary screen(NSScreen.screens.first, origin == .zero)의 높이를 기준으로 사용한다.
+    /// 보조 모니터의 좌표는 primary screen 높이 기준 상대값으로 처리된다.
+    private static func nsToCG(_ nsPoint: NSPoint) -> CGPoint {
+        let screenHeight = NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
+                        ?? NSScreen.main?.frame.height ?? 0
+        return CGPoint(x: nsPoint.x, y: screenHeight - nsPoint.y)
     }
 
     // MARK: - 마우스 이벤트 처리
 
     private func handleMouseMoved(_ point: CGPoint) {
-        // AXUIElement 좌표계는 CG 좌표계(좌상단 원점, y 아래로)와 동일하다.
-        // 마우스 이벤트도 CG 좌표이므로 변환 없이 직접 비교한다.
+        // point는 CG 좌표계(좌상단 원점).
+        // DockAXHelper.axFrameInCGCoordinates(of:)가 AX 프레임을 CG 좌표계로 변환하므로 직접 비교 가능.
         guard let hoveredApp = findHoveredDockApp(at: point) else {
-            // 마우스가 미리보기 패널 위에 있으면 패널을 숨기지 않는다.
-            if isMouseOverPanel?(point) == true { return }
+            if isMouseOverPanel?(point) == true {
+                // 패널 위에 있는 동안은 진행 중인 hide 타이머를 취소한다.
+                isHoveringPanel = true
+                cancelHoverTimer()
+                return
+            }
             scheduleHoverEnd()
             return
         }
+        isHoveringPanel = false
 
         let bundleID = hoveredApp.bundleIdentifier ?? ""
         if bundleID == lastHoveredBundleID { return }
@@ -106,9 +138,7 @@ final class DockMonitor {
         cancelHoverTimer()
         lastHoveredBundleID = bundleID
 
-        // AppSettings.shared는 @MainActor 격리이므로 CGEventTap 콜백(메인 런루프)에서
-        // 직접 접근하지 않고, 동일 UserDefaults 키를 통해 값을 읽는다.
-        // 키 이름은 AppSettings.Keys.hoverDelay를 공유해 문자열 불일치를 방지한다.
+        // AppSettings.shared는 @MainActor 격리이므로 동일 UserDefaults 키를 통해 값을 읽는다.
         let delay = UserDefaults.standard.double(forKey: AppSettings.Keys.hoverDelay)
         let hoverDelay = delay > 0 ? delay : AppSettings.Defaults.hoverDelay
         hoverTimer = Timer.scheduledTimer(withTimeInterval: hoverDelay, repeats: false) { [weak self] _ in
@@ -117,7 +147,8 @@ final class DockMonitor {
     }
 
     private func scheduleHoverEnd() {
-        guard lastHoveredBundleID != nil else { return }
+        guard lastHoveredBundleID != nil || isHoveringPanel else { return }
+        isHoveringPanel = false
         cancelHoverTimer()
         lastHoveredBundleID = nil
 
@@ -130,6 +161,13 @@ final class DockMonitor {
     private func cancelHoverTimer() {
         hoverTimer?.invalidate()
         hoverTimer = nil
+    }
+
+    /// 창 클릭 등으로 미리보기가 닫힌 후, 같은 앱 아이콘 위에 마우스가 그대로 있어도
+    /// 다음 hover 이벤트에서 패널이 다시 표시되도록 상태를 초기화한다.
+    func resetLastHovered() {
+        cancelHoverTimer()
+        lastHoveredBundleID = nil
     }
 
     // MARK: - Dock 아이콘 탐색
@@ -153,7 +191,7 @@ final class DockMonitor {
                   let items = itemsRef as? [AXUIElement] else { continue }
 
             for item in items {
-                guard let frame = DockAXHelper.axFrame(of: item),
+                guard let frame = DockAXHelper.axFrameInCGCoordinates(of: item),
                       frame.contains(point) else { continue }
 
                 return runningApp(for: item)
@@ -163,7 +201,6 @@ final class DockMonitor {
     }
 
     /// AXUIElement의 URL 속성에서 번들 ID를 추출해 실행 중인 앱 반환.
-    /// 번들 ID 추출은 DockAXHelper.bundleID(of:)에 위임한다.
     private func runningApp(for item: AXUIElement) -> NSRunningApplication? {
         guard let bundleID = DockAXHelper.bundleID(of: item) else { return nil }
         return NSWorkspace.shared.runningApplications.first {

@@ -1,9 +1,32 @@
 # DockPeek Swift Engineer — Persistent Memory
 
 ## Project Structure
+- Project renamed DockPeek → SmoothPeek (refactor commit 3af0e7f)
 - App/Core/UI layer architecture via Swift Package Manager
-- Minimum deployment: macOS 13 (Ventura); macOS 14+ branches use SCScreenshotManager
-- Key source root: `Sources/DockPeek/`
+- Minimum deployment: **macOS 14 (Sonoma)** — upgraded from 13 for MAS porting
+- Key source root: `Sources/SmoothPeek/`
+- Bundle ID: com.juholee.SmoothPeek; version 1.0.0
+- MAS build flag: `-Xswiftc -DMAS_BUILD` (defined in Package.swift comment; app sandbox ON)
+
+## SPM executableTarget Resource Constraints (P3-5)
+- **Info.plist cannot be in `resources:` array** — SPM rejects it with "forbidden as top-level resource".
+  Solution: add to `exclude:` in Package.swift; build_release.sh copies it to Contents/ directly.
+- **SVG files must be excluded** from the target to avoid "unhandled file" warnings.
+  Add all .svg files in Resources/ to `exclude:` in Package.swift.
+- **Assets.xcassets** with no PNG files: actool silently skips generating Assets.car.
+  build_release.sh falls back to calling `xcrun actool` directly to produce Assets.car.
+- SPM resource bundle for executableTarget is named `SmoothPeek_SmoothPeek.bundle` (not Assets.car).
+
+## Distribution Pipeline (P3-5)
+- `scripts/build_release.sh` — full pipeline: swift build → .app bundle → codesign → notarize → staple → DMG
+- `Makefile` — convenience targets: make build / icons / bundle / sign / dmg / release / clean / verify / run
+- `dist/` directory holds SmoothPeek.app and SmoothPeek-{version}.dmg after make dmg
+- Signing: `DEVELOPER_ID_APP` env var; hardened runtime via `--options runtime --timestamp`
+- Notarization: `NOTARIZE=1` + `NOTARY_PROFILE` (keychain, preferred) or `APPLE_ID`/`APPLE_TEAM_ID`/`APP_PASSWORD`
+- **App Sandbox ON** (MAS requirement); entitlements at `SmoothPeek.entitlements` in project root
+  - `com.apple.security.app-sandbox = true`
+  - `com.apple.security.accessibility = true`
+  - `com.apple.security.screen-capture = true`
 
 ## Known Swift Constraints (macOS/AppKit)
 - **`@available` on stored properties is not allowed.** When a property type belongs to a newer SDK
@@ -16,17 +39,19 @@
 - Cache eviction helper extracted into `storeThumbnailInCache()` to keep `thumbnail(for:size:)` readable.
 
 ## WindowInfo Model
-- Fields: `id: CGWindowID`, `title: String`, `frame: CGRect`, `isMinimized: Bool`, `pid: pid_t`
+- Fields: `id: CGWindowID`, `title: String`, `frame: CGRect`, `isMinimized: Bool`, `isOnAnotherSpace: Bool`, `pid: pid_t`
 - `isOnScreen` was removed in P2-1 (never used outside the enumerator).
 - `isMinimized` added in P2-1; used by ThumbnailGenerator (skip capture) and WindowThumbnailCard (badge UI).
+- `isOnAnotherSpace` added in P3-1; used by WindowThumbnailCard (badge UI) and WindowActivator.
 
-## WindowEnumerator Strategy (P2-1)
-- Two-pass CGWindowList query:
-  1. `[.optionOnScreenOnly, .excludeDesktopElements]` -> normal visible windows (`isMinimized: false`)
-  2. `.excludeDesktopElements` only -> filter `kCGWindowIsOnscreen == false && layer == 0` -> minimized windows
-- Deduplicate by window ID (Set of on-screen IDs).
-- Other-Space windows are also `isOnscreen == false` but CGWindowList typically does not expose them;
-  cross-Space filtering is deferred to P2-2.
+## WindowEnumerator Strategy (P2-1 / P3-1)
+- Three-pass collection:
+  1. `[.optionOnScreenOnly, .excludeDesktopElements]` -> normal visible windows (`isMinimized: false`, `isOnAnotherSpace: false`)
+  2. `.excludeDesktopElements` only -> filter `kCGWindowIsOnscreen == false && layer == 0` -> minimized windows (when showMinimizedWindows)
+  3. Direct build only: AX `kAXWindowsAttribute` + `_AXUIElementGetWindow` -> IDs not in pass 1/2 that are non-minimized -> `isOnAnotherSpace: true`
+- `_AXUIElementGetWindow` private API declared in `WindowEnumerator.swift` under `#if !MAS_BUILD`.
+- MAS build: `collectOtherSpaceWindows` returns `[]` unconditionally.
+- Other-space window frame/title extracted from AX API; `DockAXHelper.axFrameInCGCoordinates(of:)` used for coordinate conversion.
 
 ## WindowActivator: Minimized Window Restoration
 - Minimized windows have no AX position/size, so frame-based `matchesWindow` fails for them.
@@ -35,13 +60,15 @@
 - After 0.1s delay: `app.activate` + `kAXMainAttribute = true` + `kAXRaiseAction`.
 - Fallback: if AX access unavailable, call `app.activate` only.
 
-## PreviewPanelController: Fade Animation (P2-3)
+## PreviewPanelController: Fade Animation (P2-3 / P3-4)
 - `isFadingOut: Bool` flag tracks ongoing fade-out; `show()` resets it + sets `alphaValue = 0` to interrupt.
 - `NSAnimationContext.runAnimationGroup` completionHandler is treated as a `Sendable` closure — wrap
   `@MainActor` property access with `Task { @MainActor in ... }` inside the handler.
 - `NSPanel` has no `.layer` property (it's `NSWindow`, not `NSView`); never call `panel.layer?.removeAllAnimations()`.
 - `makePanel()` sets initial `alphaValue = 0` so the panel is invisible before the first fade-in.
 - `hide()` guards on `panel.isVisible` to skip animation when panel is already hidden.
+- Animation gated on `AppSettings.shared.animationEnabled`: when false, `show()` sets `alphaValue = 1` directly
+  and `hide()` calls `panel.orderOut(nil)` immediately (no NSAnimationContext, `isFadingOut` stays false).
 
 ## WindowThumbnailView: Dynamic Thumbnail Size (P2-QA)
 - `WindowThumbnailCard` and `PreviewPanelView` use `@ObservedObject private var settings = AppSettings.shared`.
@@ -52,30 +79,63 @@
 - `ThumbnailGenerator.thumbnail(for:size:)` returns `nil` immediately for minimized windows;
   the card never enters the loading state for them.
 
-## AppSettings (P2-4 / P2-QA)
-- `@MainActor final class AppSettings: ObservableObject` singleton at `Sources/DockPeek/App/AppSettings.swift`.
-- `@AppStorage` keys: `hoverDelay` (0.4s), `thumbnailWidth` (200), `thumbnailHeight` (130), `launchAtLogin` (false).
-- `Keys` enum is **internal** (not private) so DockMonitor can reference `AppSettings.Keys.hoverDelay`.
+## AppSettings (P2-4 / P2-QA / P3-4)
+- `@MainActor final class AppSettings: ObservableObject` singleton at `Sources/SmoothPeek/App/AppSettings.swift`.
+- `@AppStorage` keys: `hoverDelay` (0.4s), `thumbnailWidth` (200), `thumbnailHeight` (130), `launchAtLogin` (false),
+  `animationEnabled` (true), `showMinimizedWindows` (true), `panelToggleKey` ("").
+- All keys documented with `///` doc comments in `Keys` enum; `Defaults` enum mirrors every key.
+- `Keys` enum is **internal** (not private) so non-MainActor contexts can reference keys.
 - `launchAtLogin.didSet` → `applyLaunchAtLogin`: on register() failure, rolls back `launchAtLogin = false`
   and sets `lastLaunchAtLoginError: String?`; on success or unregister, error is nil.
-- `DockMonitor` reads hoverDelay via `UserDefaults.standard.double(forKey: AppSettings.Keys.hoverDelay)`
-  and falls back to `AppSettings.Defaults.hoverDelay` — avoids `@MainActor` crossing.
-- `PreviewPanelController.preferredSize` reads `AppSettings.shared.thumbnailWidth/Height` directly
-  (both are `@MainActor` and `preferredSize` is called from `@MainActor` context — safe).
+- Non-MainActor contexts (DockMonitor, WindowEnumerator) read settings via
+  `UserDefaults.standard.object(forKey: AppSettings.Keys.xxx).flatMap { $0 as? T } ?? AppSettings.Defaults.xxx`
+  pattern — avoids `@MainActor` crossing with a safe optional cast fallback.
+- `PreviewPanelController` reads `AppSettings.shared.*` directly (both are `@MainActor`).
 
-## SettingsView (P2-4 / P2-QA)
-- SwiftUI Form at `Sources/DockPeek/UI/SettingsView.swift`; `LabeledSlider` (private) combines Slider + TextField.
+## SettingsView (P2-4 / P2-QA / P3-4)
+- SwiftUI Form at `Sources/SmoothPeek/UI/SettingsView.swift`; `LabeledSlider` (private) combines Slider + TextField.
+- Sections: hoverSection, thumbnailSection, behaviorSection, shortcutSection, loginSection, updateSection, resetSection.
+- `behaviorSection`: animationEnabled + showMinimizedWindows toggles.
+- `shortcutSection`: `KeyRecorderField` (NSViewRepresentable) — click to record, Delete to clear, Escape to cancel.
+  `KeyCaptureNSView` is a public NSView subclass (needed by NSViewRepresentable); `KeyRecorderField` is private struct.
+- `updateSection`: "업데이트 확인" button with `// TODO: Sparkle integration (P3-6)` stub (no `#if DEBUG` guard).
+- `LabeledSlider` Slider has `.accessibilityLabel(label)` + `.accessibilityValue("\(value) \(unit)")`.
 - Uses `@ObservedObject` (NOT `@StateObject`) — singleton is owned externally, view does not own it.
-- macOS 13 constraint: `onChange(of:)` must use **single-argument** closure `{ newValue in }`.
-- `loginSection` shows a red error Text below the Toggle when `settings.lastLaunchAtLoginError != nil`.
-- Settings window opened via `AppDelegate.openSettings()`: `NSApp.activate(ignoringOtherApps: true)`
-  is required because the app runs as `.accessory` policy (no Dock icon = no auto-focus).
+- macOS 14+: `onChange(of:)` uses **two-parameter** closure `{ _, newValue in }`.
+- Settings window opened via `AppDelegate.openSettings()`: `NSApp.activate(ignoringOtherApps: true)` required.
 - Window is kept in `settingsWindow: NSWindow?` (isReleasedWhenClosed = false) for single-instance reuse.
-- `openSettings()` checks `settingsWindow != nil` (not `isVisible`) — handles minimized state via
-  `isMiniaturized` check + `deminiaturize(nil)` before `makeKeyAndOrderFront`.
 
-## ThumbnailGenerator: SCKit Cache Invalidation (P2-QA)
-- When `captureWithSCKit` cannot find a windowID in cached `SCShareableContent`, it sets
-  `cachedShareableContent = nil` and `shareableContentTimestamp = nil` before CGWindow fallback.
-- This ensures the next call triggers a fresh `SCShareableContent` fetch, recovering SCKit quality
-  for newly opened windows without waiting for the 2.5s TTL to expire.
+## ThumbnailGenerator: SCKit Only (MAS port)
+- **CGWindowListCreateImage removed** — macOS 14+ / MAS requires SCKit only.
+- Cache invalidation: when windowID not found in cached `SCShareableContent`, invalidate cache
+  and call `captureWithSCKitRetry()` (1 retry with fresh fetch) instead of CGWindow fallback.
+- `@available(macOS 14.0, *)` guards on `captureWithSCKit` removed — whole class is 14+ now.
+- `cachedShareableContent: Any?` boxing pattern retained (stored property @available restriction).
+
+## DockAXHelper: Coordinate System (P3-3)
+- `axFrame(of:)` — returns NS coordinate system (bottom-left origin). Use with AppKit APIs (NSPanel.setFrameOrigin).
+- `axFrameInCGCoordinates(of:)` — converts NS → CG (top-left origin) using primary screen height.
+  Formula: `cgY = screenHeight - nsY - frameHeight`. Use when comparing with CGWindowList frames or mouse events.
+- `DockMonitor.findHoveredDockApp` uses `axFrameInCGCoordinates` (was incorrectly using `axFrame` before P3-3).
+- `PreviewPanelController.findDockIconFrame` uses `axFrame` (NS coords for setFrameOrigin — correct).
+
+## DockMonitor: NSEvent (MAS port)
+- **CGEventTap completely removed** — replaced with `NSEvent.addGlobalMonitorForEvents(.mouseMoved)`.
+- NSEvent monitor is MAS sandbox compatible; no Input Monitoring permission needed.
+- **Coordinate conversion**: `NSEvent.mouseLocation` is NS coords (bottom-left origin).
+  Convert to CG coords: `cgY = primaryScreenHeight - nsY` via `DockMonitor.nsToCG(_:)`.
+- `AXIsProcessTrusted()` check in `setupMouseMonitor()` — fires `onPermissionError` if false.
+- `stop()` calls `NSEvent.removeMonitor()` instead of `CGEvent.tapEnable(tap:enable:false)`.
+
+## WindowActivator: Private API Removed (MAS port) / Other-Space Support (P3-1)
+- `@_silgen_name("_AXUIElementGetWindow")` **removed from WindowActivator** — Private API banned in MAS.
+  Still used in `WindowEnumerator.swift` under `#if !MAS_BUILD` for other-space detection.
+- **kAXWindowIdentifierAttribute investigation result**: not in public SDK (AXWindowIdentifier
+  returns -25205 kAXErrorAttributeUnsupported at runtime). Cannot replace private API.
+- frame + title comparison is now the sole matching strategy (was previously fallback).
+- `app.activate(options: [.activateIgnoringOtherApps])` → `app.activate()` (deprecated macOS 14).
+- `isOnAnotherSpace` branch: `raiseWindow` + `activate()` (no 80ms re-raise); macOS auto-switches Space on raise.
+
+## SettingsView: macOS 14 API (MAS port)
+- `onChange(of:)` updated to two-parameter form `{ _, newValue in }` (macOS 14+).
+  (Previously single-argument form was used for macOS 13 compatibility.)

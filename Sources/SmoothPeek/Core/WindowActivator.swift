@@ -1,18 +1,47 @@
 import Cocoa
 
+// 창 매칭 전략:
+//
+// Direct 배포 빌드 (기본, MAS_BUILD 미정의):
+//   1순위: _AXUIElementGetWindow (CGWindowID 직접 매칭) — Chrome/Electron 멀티 윈도우 정확
+//   2순위: frame + title fallback
+//
+// App Store 빌드 (-DMAS_BUILD 플래그):
+//   1순위: frame + title 비교 (Private API 없음, App Store 심사 통과)
+//   Chrome 멀티 윈도우 동일 크기인 경우 오매칭 가능성 있음 (MAS 환경의 트레이드오프)
+//
+// kAXWindowIdentifierAttribute 조사 결과 (2026-03):
+//   -25205 (kAXErrorAttributeUnsupported) — 공개 SDK에서 지원되지 않음.
+
+#if !MAS_BUILD
+@_silgen_name("_AXUIElementGetWindow")
+private func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
+#endif
+
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
     /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동.
-    /// 최소화 윈도우인 경우 복원 후 활성화한다.
+    ///
+    /// - 최소화 윈도우: AX로 복원 후 활성화
+    /// - 다른 스페이스 윈도우: raise → activate 순서로 호출하면 macOS가 해당 스페이스로 자동 전환
+    /// - 일반 온스크린 윈도우: raise + activate + 80ms 재-raise(Chrome/Electron 대응)
     static func activate(window: WindowInfo, app: NSRunningApplication) {
         if window.isMinimized {
             restoreAndActivate(window: window, app: app)
-        } else {
-            // raise를 먼저 수행한 뒤 activate한다.
-            // activate를 먼저 하면 OS가 마지막 활성 윈도우를 최전면으로 올리고,
-            // 이후 raise가 덮어쓰기 어려운 경쟁 조건이 생긴다.
+        } else if window.isOnAnotherSpace {
+            // 다른 스페이스 윈도우: kAXRaiseAction을 먼저 호출해 macOS에게 스페이스 전환을 유도하고
+            // activate()로 앱을 포커스한다.
             raiseWindow(window: window, pid: app.processIdentifier)
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
+        } else {
+            raiseWindow(window: window, pid: app.processIdentifier)
+            app.activate()
+            // Chrome/Electron 앱은 activate() 이후 자체 로직으로 마지막 활성 창을 최전면에 올린다.
+            // 80ms 후 재-raise로 덮어쓴다.
+            let pid = app.processIdentifier
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                raiseWindow(window: window, pid: pid)
+            }
         }
     }
 
@@ -26,7 +55,7 @@ enum WindowActivator {
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else {
             // AX 권한 없이 복원 불가 — 앱만 활성화
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
             return
         }
 
@@ -41,7 +70,7 @@ enum WindowActivator {
 
             // 복원 후 앱 활성화 + raise
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                app.activate(options: [.activateIgnoringOtherApps])
+                app.activate()
                 AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
                 AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
             }
@@ -49,7 +78,7 @@ enum WindowActivator {
         }
 
         // 매칭 실패 — 앱만 활성화
-        app.activate(options: [.activateIgnoringOtherApps])
+        app.activate()
     }
 
     private static func isMinimizedAXWindow(_ element: AXUIElement) -> Bool {
@@ -78,39 +107,40 @@ enum WindowActivator {
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef) == .success,
               let axWindows = windowsRef as? [AXUIElement] else { return }
 
-        for axWindow in axWindows {
-            if matchesWindow(axWindow, target: window) {
-                AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
-                AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
-                // 앱 엘리먼트의 포커스 윈도우를 명시적으로 지정해
-                // activate() 시 이 윈도우가 최전면으로 오도록 한다.
-                AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
-                break
-            }
-        }
+        guard let axWindow = findAXWindow(in: axWindows, matching: window) else { return }
+        AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, true as CFTypeRef)
+        AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
     }
 
-    /// AXUIElement와 WindowInfo를 frame + title 기반으로 매칭.
+    /// AXUIElement 배열에서 WindowInfo에 대응하는 항목을 찾는다.
     ///
-    /// 좌표계:
-    /// - kAXPositionAttribute는 CG 좌표계(좌상단 원점, y 아래로 증가)를 반환한다.
-    /// - CGWindowList의 kCGWindowBounds도 동일한 CG 좌표계이다.
-    /// - 따라서 두 값을 그대로 비교할 수 있으며 Y-flip 변환이 불필요하다.
+    /// Direct 빌드: CGWindowID 직접 매칭 (1순위) → frame+title fallback (2순위)
+    /// MAS 빌드: frame+title 매칭만 사용
+    private static func findAXWindow(in axWindows: [AXUIElement], matching window: WindowInfo) -> AXUIElement? {
+#if !MAS_BUILD
+        // 1순위: CGWindowID 직접 매칭 — Chrome/Electron 동일 크기 창도 정확히 구분
+        for axWindow in axWindows {
+            var wid: CGWindowID = 0
+            if _AXUIElementGetWindow(axWindow, &wid) == .success, wid == window.id {
+                return axWindow
+            }
+        }
+#endif
+        // 2순위(Direct) / 1순위(MAS): frame + title 매칭
+        return axWindows.first { matchesWindow($0, target: window) }
+    }
+
+    /// AXUIElement와 WindowInfo 매칭.
+    ///
+    /// frame + title 비교 방식 사용.
+    /// AX position은 NS 좌표계(좌하단 원점), WindowInfo.frame은 CG 좌표계(좌상단 원점)이므로
+    /// DockAXHelper.axFrameInCGCoordinates(of:)로 AX frame을 CG 좌표계로 변환한 뒤 비교한다.
+    ///
+    /// 동일 title·동일 frame 창(극히 드문 케이스)은 첫 번째 매칭 창을 선택하며,
+    /// 이는 Private API 없는 환경에서의 최선이다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
-        var posRef: CFTypeRef?
-        var sizeRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
-              let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
-              let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { return false }
-
-        var axPos = CGPoint.zero
-        var axSize = CGSize.zero
-        AXValueGetValue(posVal as! AXValue, .cgPoint, &axPos)   // safe: type ID checked
-        AXValueGetValue(sizeVal as! AXValue, .cgSize, &axSize)  // safe: type ID checked
-
-        // AX와 CGWindowList 모두 CG 좌표계 — 변환 없이 직접 비교
-        let axFrame = CGRect(x: axPos.x, y: axPos.y, width: axSize.width, height: axSize.height)
+        guard let axFrame = DockAXHelper.axFrameInCGCoordinates(of: element) else { return false }
 
         let tolerance: CGFloat = 4
         guard abs(axFrame.origin.x - target.frame.origin.x) < tolerance,
@@ -118,22 +148,12 @@ enum WindowActivator {
               abs(axFrame.size.width - target.frame.size.width) < tolerance,
               abs(axFrame.size.height - target.frame.size.height) < tolerance else { return false }
 
-        // 동일 크기 윈도우가 여러 개일 때 title로 보조 검증.
-        //
-        // [불변 조건] target.title은 WindowEnumerator에서
-        //   kCGWindowName ?? app.localizedName 으로 채워지므로 실질적으로 비어있지 않다.
-        //
-        // [의도적 skip] axTitle이 비어있는 경우(무제목 창, 일부 유틸리티 패널 등)는
-        //   title 비교를 건너뛰고 frame 매칭만으로 true를 반환한다.
-        //   이는 무제목 창이 여러 개일 때 첫 번째 AX 순서 창을 선택하는 합리적 fallback이다.
         var titleRef: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
         if let axTitle = titleRef as? String, !axTitle.isEmpty {
-            // target.title은 항상 비어있지 않으므로 axTitle만 검사하면 충분하다.
             return axTitle == target.title
         }
 
-        // axTitle을 읽을 수 없거나 빈 문자열이면 frame 매칭 결과를 그대로 채택한다.
         return true
     }
 }

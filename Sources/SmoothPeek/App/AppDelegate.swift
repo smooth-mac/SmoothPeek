@@ -28,7 +28,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "macwindow.on.rectangle", accessibilityDescription: "SmoothPeek")
+            // Assets.xcassets의 StatusBarIcon 이미지셋을 로드한다.
+            // PNG 빌드 전(SVG만 있는 경우) SF Symbol로 폴백한다.
+            if let icon = NSImage(named: "StatusBarIcon") {
+                icon.isTemplate = true
+                button.image = icon
+            } else {
+                button.image = NSImage(systemSymbolName: "macwindow.on.rectangle",
+                                       accessibilityDescription: "SmoothPeek")
+            }
             button.action = #selector(statusBarClicked)
             button.target = self
         }
@@ -76,6 +84,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeSettingsWindow() -> NSWindow {
         let host = NSHostingController(rootView: SettingsView())
+        // Form + .formStyle(.grouped)은 내부적으로 NSScrollView를 사용하므로
+        // intrinsic height가 0이 된다. preferredContentSize를 명시적으로 지정한다.
+        host.preferredContentSize = NSSize(width: 420, height: 560)
         let window = NSWindow(contentViewController: host)
         window.title = "SmoothPeek 환경설정"
         window.styleMask = [.titled, .closable, .miniaturizable]
@@ -87,16 +98,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Permissions
 
     private func checkPermissions() {
+        // 이미 신뢰된 경우 팝업 없이 즉시 반환
+        guard !AXIsProcessTrusted() else { return }
+
+        // 신뢰되지 않은 경우에만 시스템 TCC 팝업 표시 (prompt: true)
+        // 팝업은 사용자가 시스템 설정에서 직접 허용할 수 있도록 안내한다.
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let trusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
-        if !trusted {
-            print("[SmoothPeek] 접근성 권한이 필요합니다.")
-            // 시스템 권한 요청 다이얼로그가 자동으로 표시됨 (prompt: true)
-        }
+        AXIsProcessTrustedWithOptions(options as CFDictionary)
         // 화면 녹화 권한은 ScreenCaptureKit 첫 사용 시 자동 요청됨
     }
 
-    // P1-4: CGEventTap 생성 실패 시 사용자에게 안내
+    // 접근성 권한 오류 시 사용자에게 안내
     private func showPermissionAlert() {
         // 상태바 아이콘을 경고 아이콘으로 변경 — runModal() 이전에 수행해야
         // 모달이 떠 있는 동안에도 아이콘이 오류 상태를 반영한다.
@@ -105,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let alert = NSAlert()
         alert.messageText = "접근성 권한이 필요합니다"
-        alert.informativeText = "SmoothPeek가 Dock 이벤트를 감지하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 SmoothPeek를 허용한 후 앱을 재시작해 주세요."
+        alert.informativeText = "SmoothPeek가 Dock 아이콘 감지 및 창 활성화 기능을 사용하려면 접근성 권한이 필요합니다.\n\n시스템 설정 → 개인 정보 보호 및 보안 → 손쉬운 사용에서 SmoothPeek를 허용한 후 앱을 재시작해 주세요."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "시스템 설정 열기")
         alert.addButton(withTitle: "나중에")
@@ -130,12 +142,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in self?.previewController?.hide() }
         }
         dockMonitor?.onPermissionError = { [weak self] in
-            Task { @MainActor in self?.showPermissionAlert() }
+            Task { @MainActor in
+                self?.showPermissionAlert()
+                // 권한이 허용될 때까지 1초마다 재시도
+                self?.waitForAccessibilityPermission()
+            }
+        }
+        previewController?.onWindowSelected = { [weak self] in
+            self?.dockMonitor?.resetLastHovered()
         }
         dockMonitor?.isMouseOverPanel = { [weak self] point in
             self?.previewController?.containsMouse(at: point) ?? false
         }
         dockMonitor?.start()
+    }
+
+    /// 접근성 권한이 허용될 때까지 1초마다 폴링하다가 허용되면 모니터를 자동 재시작.
+    /// 사용자가 시스템 설정에서 토글을 켠 직후 앱 재시작 없이 동작하게 한다.
+    @MainActor
+    private func waitForAccessibilityPermission() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            guard AXIsProcessTrusted() else { return }
+            timer.invalidate()
+            self.dockMonitor?.stop()
+            self.dockMonitor?.start()
+        }
     }
 
     @MainActor
