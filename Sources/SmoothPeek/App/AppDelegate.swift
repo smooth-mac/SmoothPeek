@@ -6,6 +6,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var dockMonitor: DockMonitor?
     private var previewController: PreviewPanelController?
 
+    /// 현재 진행 중인 hover 처리 Task.
+    /// 새 hover 이벤트 또는 hover 종료 시 이전 Task를 취소해 race condition을 방지한다.
+    private var hoverTask: Task<Void, Never>?
+
     /// 환경설정 윈도우 — 단일 인스턴스를 유지해 재클릭 시 기존 윈도우를 활성화한다.
     private var settingsWindow: NSWindow?
 
@@ -139,7 +143,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in self?.handleHover(bundleID: bundleID, app: app) }
         }
         dockMonitor?.onHoverEnded = { [weak self] in
-            Task { @MainActor in self?.previewController?.hide() }
+            Task { @MainActor [weak self] in
+                self?.hoverTask?.cancel()
+                self?.hoverTask = nil
+                self?.previewController?.hide()
+            }
         }
         dockMonitor?.onPermissionError = { [weak self] in
             Task { @MainActor in
@@ -172,17 +180,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func handleHover(bundleID: String?, app: NSRunningApplication?) {
+        // 이전 hover Task를 취소하여 race condition(show/hide 순서 역전)을 방지한다.
+        hoverTask?.cancel()
+
         guard let app = app else {
             previewController?.hide()
             return
         }
-        let windows = WindowEnumerator.windows(for: app)
-        // P1-3: 윈도우가 없으면 기존 패널도 숨김
-        guard !windows.isEmpty else {
-            previewController?.hide()
-            return
-        }
 
-        previewController?.show(for: app, windows: windows)
+        hoverTask = Task { [weak self] in
+            let windows = await WindowEnumerator.windows(for: app)
+
+            // Task가 취소됐으면(hover 종료 또는 다른 앱 hover) 결과를 무시한다.
+            guard !Task.isCancelled, let self else { return }
+
+            // P1-3: 윈도우가 없으면 기존 패널도 숨김
+            guard !windows.isEmpty else {
+                previewController?.hide()
+                return
+            }
+
+            previewController?.show(for: app, windows: windows)
+        }
     }
 }
