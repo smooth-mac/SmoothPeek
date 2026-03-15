@@ -63,7 +63,9 @@
       "Bash(screencapture -R \"350,38,430,570\" /tmp/sp_window_only.png)",
       "Bash(screencapture -R \"395,38,430,570\" /tmp/sp_only.png)",
       "Bash(screencapture -R \"1070,40,445,580\" /tmp/sp_right_edge.png)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }
