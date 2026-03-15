@@ -78,6 +78,7 @@ struct WindowThumbnailCard: View {
     ///
     /// 창이 세로로 길거나 작은 경우에도 빈 공간 없이 창 내용이 꽉 차도록 한다.
     /// 최소화 윈도우 또는 frame 정보가 없으면 기본값(maxWidth × maxHeight)을 사용한다.
+    /// 다른 스페이스 윈도우는 frame 정보가 있으면 비율을 유지한다.
     private var thumbSize: CGSize {
         let maxW = settings.thumbnailWidth
         let maxH = settings.thumbnailHeight
@@ -102,6 +103,10 @@ struct WindowThumbnailCard: View {
 
                 if window.isMinimized {
                     MinimizedPlaceholder(app: app)
+                        .frame(width: thumbSize.width, height: thumbSize.height)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else if window.isOnAnotherSpace {
+                    AnotherSpacePlaceholder(app: app)
                         .frame(width: thumbSize.width, height: thumbSize.height)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else if let thumbnail {
@@ -139,6 +144,7 @@ struct WindowThumbnailCard: View {
             onSelect(window)
         }
         .task(id: thumbSize) {
+            guard !window.isMinimized, !window.isOnAnotherSpace else { return }
             thumbnail = await ThumbnailGenerator.shared.thumbnail(for: window, size: thumbSize)
         }
     }
@@ -177,6 +183,39 @@ private struct MinimizedPlaceholder: View {
     }
 }
 
+// MARK: - 다른 스페이스 윈도우 플레이스홀더
+
+/// 다른 Mission Control 스페이스의 윈도우에 표시하는 뷰: 앱 아이콘 + "다른 스페이스" 배지
+private struct AnotherSpacePlaceholder: View {
+    let app: NSRunningApplication
+
+    var body: some View {
+        ZStack {
+            // 배경 — 약간 파란 톤으로 최소화 플레이스홀더와 시각적 구분
+            Color.blue.opacity(0.12)
+
+            VStack(spacing: 8) {
+                if let icon = app.icon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .frame(width: 48, height: 48)
+                        .shadow(color: .black.opacity(0.3), radius: 4)
+                }
+
+                Text("다른 스페이스")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.15))
+                    )
+            }
+        }
+    }
+}
+
 // MARK: - Preview
 
 #if DEBUG
@@ -188,6 +227,7 @@ struct PreviewPanelView_Previews: PreviewProvider {
                 title: "Document 1.swift",
                 frame: CGRect(x: 0, y: 0, width: 800, height: 600),
                 isMinimized: false,
+                isOnAnotherSpace: false,
                 pid: 1234
             ),
             WindowInfo(
@@ -195,6 +235,7 @@ struct PreviewPanelView_Previews: PreviewProvider {
                 title: "Document 2.swift",
                 frame: CGRect(x: 0, y: 0, width: 800, height: 600),
                 isMinimized: true,
+                isOnAnotherSpace: false,
                 pid: 1234
             ),
             WindowInfo(
@@ -202,6 +243,7 @@ struct PreviewPanelView_Previews: PreviewProvider {
                 title: "Document 3.swift",
                 frame: CGRect(x: 0, y: 0, width: 800, height: 600),
                 isMinimized: false,
+                isOnAnotherSpace: true,
                 pid: 1234
             ),
         ]

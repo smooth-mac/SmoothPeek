@@ -119,7 +119,7 @@ final class DockMonitor {
 
     private func handleMouseMoved(_ point: CGPoint) {
         // point는 CG 좌표계(좌상단 원점).
-        // DockAXHelper.axFrame(of:)도 CG 좌표계와 동일하게 동작하므로 직접 비교한다.
+        // DockAXHelper.axFrameInCGCoordinates(of:)가 AX 프레임을 CG 좌표계로 변환하므로 직접 비교 가능.
         guard let hoveredApp = findHoveredDockApp(at: point) else {
             if isMouseOverPanel?(point) == true {
                 // 패널 위에 있는 동안은 진행 중인 hide 타이머를 취소한다.
@@ -191,7 +191,7 @@ final class DockMonitor {
                   let items = itemsRef as? [AXUIElement] else { continue }
 
             for item in items {
-                guard let frame = DockAXHelper.axFrame(of: item),
+                guard let frame = DockAXHelper.axFrameInCGCoordinates(of: item),
                       frame.contains(point) else { continue }
 
                 return runningApp(for: item)

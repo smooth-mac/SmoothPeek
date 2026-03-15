@@ -21,10 +21,18 @@ private func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGW
 /// 특정 윈도우를 최전면으로 가져오는 유틸리티
 enum WindowActivator {
     /// 앱을 활성화하고 특정 윈도우를 맨 앞으로 이동.
-    /// 최소화 윈도우인 경우 복원 후 활성화한다.
+    ///
+    /// - 최소화 윈도우: AX로 복원 후 활성화
+    /// - 다른 스페이스 윈도우: raise → activate 순서로 호출하면 macOS가 해당 스페이스로 자동 전환
+    /// - 일반 온스크린 윈도우: raise + activate + 80ms 재-raise(Chrome/Electron 대응)
     static func activate(window: WindowInfo, app: NSRunningApplication) {
         if window.isMinimized {
             restoreAndActivate(window: window, app: app)
+        } else if window.isOnAnotherSpace {
+            // 다른 스페이스 윈도우: kAXRaiseAction을 먼저 호출해 macOS에게 스페이스 전환을 유도하고
+            // activate()로 앱을 포커스한다.
+            raiseWindow(window: window, pid: app.processIdentifier)
+            app.activate()
         } else {
             raiseWindow(window: window, pid: app.processIdentifier)
             app.activate()
@@ -126,24 +134,13 @@ enum WindowActivator {
     /// AXUIElement와 WindowInfo 매칭.
     ///
     /// frame + title 비교 방식 사용.
-    /// AX와 CGWindowList 모두 CG 좌표계(좌상단 원점)를 사용하므로 변환 없이 직접 비교한다.
+    /// AX position은 NS 좌표계(좌하단 원점), WindowInfo.frame은 CG 좌표계(좌상단 원점)이므로
+    /// DockAXHelper.axFrameInCGCoordinates(of:)로 AX frame을 CG 좌표계로 변환한 뒤 비교한다.
     ///
     /// 동일 title·동일 frame 창(극히 드문 케이스)은 첫 번째 매칭 창을 선택하며,
     /// 이는 Private API 없는 환경에서의 최선이다.
     private static func matchesWindow(_ element: AXUIElement, target: WindowInfo) -> Bool {
-        var posRef: CFTypeRef?
-        var sizeRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
-              AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
-              let posVal = posRef, CFGetTypeID(posVal) == AXValueGetTypeID(),
-              let sizeVal = sizeRef, CFGetTypeID(sizeVal) == AXValueGetTypeID() else { return false }
-
-        var axPos = CGPoint.zero
-        var axSize = CGSize.zero
-        AXValueGetValue(posVal as! AXValue, .cgPoint, &axPos)   // safe: type ID checked
-        AXValueGetValue(sizeVal as! AXValue, .cgSize, &axSize)  // safe: type ID checked
-
-        let axFrame = CGRect(x: axPos.x, y: axPos.y, width: axSize.width, height: axSize.height)
+        guard let axFrame = DockAXHelper.axFrameInCGCoordinates(of: element) else { return false }
 
         let tolerance: CGFloat = 4
         guard abs(axFrame.origin.x - target.frame.origin.x) < tolerance,
