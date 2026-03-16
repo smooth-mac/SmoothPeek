@@ -53,12 +53,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 APP_NAME="SmoothPeek"
-BUNDLE_ID="com.juholee.SmoothPeek"
 EXECUTABLE="$APP_NAME"
 
-# Info.plist에서 버전 읽기
+# Info.plist에서 버전 및 번들 ID 읽기 (단일 소스 of truth)
 INFO_PLIST="$PROJECT_ROOT/Sources/SmoothPeek/Info.plist"
 APP_VERSION="$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || echo "1.0.0")"
+BUNDLE_ID="$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$INFO_PLIST" 2>/dev/null || echo "com.smoothmac.smoothpeek")"
 
 ENTITLEMENTS="$PROJECT_ROOT/SmoothPeek.entitlements"
 RESOURCES_SRC="$PROJECT_ROOT/Sources/SmoothPeek/Resources"
@@ -252,8 +252,22 @@ done
 log_step "[3/6] Code signing"
 
 if [ -z "$DEVELOPER_ID_APP" ]; then
-    log_warn "Skipping code signing (DEVELOPER_ID_APP not set)."
-    log_warn "To sign: export DEVELOPER_ID_APP=\"Developer ID Application: Name (TEAMID)\""
+    # 서명 인증서 없는 경우에도 ad-hoc으로 번들 전체를 재서명한다.
+    # 이유: swift build의 linker-signed adhoc 서명은 Info.plist를 코드 디렉토리에
+    # 바인딩하지 않는다(Info.plist=not bound). 그 결과 macOS TCC 시스템이
+    # CFBundleIdentifier 대신 실행파일 이름(SmoothPeek)으로 앱을 식별해
+    # 시스템 설정에서 권한을 허용해도 AXIsProcessTrusted()가 false를 반환하는 버그가 생긴다.
+    # --sign - (ad-hoc) + --force로 번들 서명을 교체하면 Info.plist가 바인딩되어
+    # CFBundleIdentifier가 올바르게 인식된다.
+    log_info "No DEVELOPER_ID_APP set — applying ad-hoc signature to bind Info.plist."
+    codesign \
+        --sign - \
+        --force \
+        --deep \
+        "$APP_BUNDLE"
+    log_ok "Ad-hoc signature applied (Info.plist bound, identifier: $BUNDLE_ID)"
+    log_warn "Ad-hoc signed binary is for local development only — not for distribution."
+    log_warn "To sign for distribution: export DEVELOPER_ID_APP=\"Developer ID Application: Name (TEAMID)\""
 else
     # Hardened Runtime 활성화 (--options runtime) — 공증 필수 조건
     # entitlements 파일로 예외 허용 (sandbox=false, accessibility, screen-capture)
