@@ -11,11 +11,8 @@ import ApplicationServices
 /// AX API의 position은 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 사용한다.
 /// CGWindowList의 frame과 동일한 좌표계이다.
 ///
-/// `axFrame(of:)`가 반환하는 CGRect의 origin은 CG 좌표계 기준이다.
-/// - DockMonitor: 마우스 이벤트를 nsToCG로 변환 후 비교 → 직접 일치
-/// - PreviewPanelController: setFrameOrigin(NS 좌표계)에 전달할 때
-///   좌/우 Dock의 iconFrame.midY는 `screen.frame.height - midY` 변환이 필요하다.
-///   (하단 Dock은 visibleFrame.minY를 NS 좌표로 직접 사용하므로 변환 불필요)
+/// `axFrame(of:)` — NS 좌표계 그대로 반환. NSPanel.setFrameOrigin 등 AppKit API에 사용.
+/// `axFrameInCGCoordinates(of:)` — CG 좌표계로 변환 후 반환. CGWindowList·마우스 이벤트 비교에 사용.
 enum DockAXHelper {
 
     // MARK: - Frame 추출
@@ -25,7 +22,7 @@ enum DockAXHelper {
     /// AX API는 position/size를 AXValue 타입으로 반환하므로
     /// `CFGetTypeID()` 검사 후 `AXValueGetValue()`로 안전하게 추출한다.
     ///
-    /// - Returns: AX 좌표계(NS 좌표계와 동일 원점)의 CGRect, 실패 시 nil
+    /// - Returns: AX 좌표계(NS 좌표계, 좌하단 원점)의 CGRect. AppKit 좌표계 API에 직접 사용 가능. 실패 시 nil.
     static func axFrame(of element: AXUIElement) -> CGRect? {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
@@ -40,6 +37,23 @@ enum DockAXHelper {
         AXValueGetValue(sizeVal as! AXValue, .cgSize, &size)  // safe: type ID checked above
 
         return CGRect(origin: pos, size: size)
+    }
+
+    /// AXUIElement의 frame을 CG 좌표계(좌상단 원점, y 아래로 증가)로 변환해 반환.
+    ///
+    /// AX 좌표계(NS 좌표계, 좌하단 원점)에서 CG 좌표계로 변환:
+    /// `cgY = primaryScreenHeight - nsY - frameHeight`
+    ///
+    /// primary screen(origin == .zero인 화면)의 높이를 기준으로 사용한다.
+    /// 마우스 이벤트 좌표(CG) 및 CGWindowList frame과 직접 비교할 때 사용한다.
+    ///
+    /// - Returns: CG 좌표계(좌상단 원점)의 CGRect. 실패 시 nil.
+    static func axFrameInCGCoordinates(of element: AXUIElement) -> CGRect? {
+        guard let nsFrame = axFrame(of: element) else { return nil }
+        let screenHeight = NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
+                        ?? NSScreen.main?.frame.height ?? 0
+        let cgY = screenHeight - nsFrame.origin.y - nsFrame.size.height
+        return CGRect(x: nsFrame.origin.x, y: cgY, width: nsFrame.size.width, height: nsFrame.size.height)
     }
 
     // MARK: - Bundle ID 추출
