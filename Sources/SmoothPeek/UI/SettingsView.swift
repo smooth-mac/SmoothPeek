@@ -20,6 +20,7 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .padding(8)
         .frame(width: 420)
+        .frame(minHeight: 360)
     }
 
     // MARK: - Sections

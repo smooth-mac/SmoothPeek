@@ -8,15 +8,14 @@ import ApplicationServices
 ///
 /// ## 좌표계 주의사항
 ///
-/// AX API의 position은 **NS 좌표계**(좌하단 원점, y 위로 증가)를 사용한다.
-/// CGWindowList의 frame은 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 사용한다.
+/// AX API의 position은 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 사용한다.
+/// CGWindowList의 frame과 동일한 좌표계이다.
 ///
-/// `axFrame(of:)`가 반환하는 CGRect의 origin은 AX API 원문 그대로의 NS 좌표계이다.
-/// - DockMonitor에서는 마우스 이벤트(CG 좌표계)와 비교하는데,
-///   Dock 아이콘의 AX position은 실제로 CG 좌표계와 동일하게 동작한다.
-///   (Dock은 화면 하단에 위치하므로 좌상단 원점 기준의 y값이 바닥 근처의 양수값임)
-/// - PreviewPanelController에서는 setFrameOrigin(NS 좌표계)에 직접 사용하므로
-///   별도 변환 없이 올바르게 동작한다.
+/// `axFrame(of:)`가 반환하는 CGRect의 origin은 CG 좌표계 기준이다.
+/// - DockMonitor: 마우스 이벤트를 nsToCG로 변환 후 비교 → 직접 일치
+/// - PreviewPanelController: setFrameOrigin(NS 좌표계)에 전달할 때
+///   좌/우 Dock의 iconFrame.midY는 `screen.frame.height - midY` 변환이 필요하다.
+///   (하단 Dock은 visibleFrame.minY를 NS 좌표로 직접 사용하므로 변환 불필요)
 enum DockAXHelper {
 
     // MARK: - Frame 추출
