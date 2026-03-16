@@ -51,7 +51,10 @@
   3. Direct build only: AX `kAXWindowsAttribute` + `_AXUIElementGetWindow` -> IDs not in pass 1/2 that are non-minimized -> `isOnAnotherSpace: true`
 - `_AXUIElementGetWindow` private API declared in `WindowEnumerator.swift` under `#if !MAS_BUILD`.
 - MAS build: `collectOtherSpaceWindows` returns `[]` unconditionally.
-- Other-space window frame/title extracted from AX API; `DockAXHelper.axFrameInCGCoordinates(of:)` used for coordinate conversion.
+- Other-space window frame/title extracted from AX API; coord conversion inlined in `makeOtherSpaceWindowInfo` using pre-captured `primaryScreenHeight` (NOT `DockAXHelper.axFrameInCGCoordinates` — that calls `NSScreen.screens` which is main-thread only).
+- **P3-2 async**: `windows(for:)` is now `@MainActor async`; captures `primaryScreenHeight` on main thread then calls `Task.detached(priority: .userInitiated)` for all CGWindowList + AX queries.
+- Private sync entry point renamed to `collectWindows(for:primaryScreenHeight:)` (called only from detached task).
+- `collectVisibleWindows(pid:app:)` replaces the old `collectWindows(pid:app:options:isMinimized:)` — Pass 1 only, options hardcoded.
 
 ## WindowActivator: Minimized Window Restoration
 - Minimized windows have no AX position/size, so frame-based `matchesWindow` fails for them.
@@ -135,6 +138,12 @@
 - frame + title comparison is now the sole matching strategy (was previously fallback).
 - `app.activate(options: [.activateIgnoringOtherApps])` → `app.activate()` (deprecated macOS 14).
 - `isOnAnotherSpace` branch: `raiseWindow` + `activate()` (no 80ms re-raise); macOS auto-switches Space on raise.
+
+## AppDelegate: hoverTask Race Condition Fix (P3-2)
+- `private var hoverTask: Task<Void, Never>?` added to `AppDelegate`.
+- `handleHover()` cancels `hoverTask` first, then creates a new `Task { [weak self] in ... }` that awaits `WindowEnumerator.windows(for:)` and guards on `Task.isCancelled` before calling `show()`.
+- `onHoverEnded` callback cancels `hoverTask` + nils it out before calling `hide()`.
+- `handleHover` Task body runs on inherited `@MainActor` context (inherits from `handleHover` caller) so `previewController?.show/hide` calls are safe without explicit `MainActor.run`.
 
 ## SettingsView: macOS 14 API (MAS port)
 - `onChange(of:)` updated to two-parameter form `{ _, newValue in }` (macOS 14+).

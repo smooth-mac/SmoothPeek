@@ -28,15 +28,41 @@ enum WindowEnumerator {
     ///    CGWindowID를 추출한 뒤, CGWindowList에 없는(오프스크린·비최소화) ID를 다른 스페이스로 분류한다.
     ///
     /// 반환 목록은 CGWindowID 오름차순(창 생성 순서)으로 정렬된다.
-    static func windows(for app: NSRunningApplication) -> [WindowInfo] {
+    ///
+    /// CGWindowList 쿼리와 AX 쿼리를 `Task.detached`(userInitiated)로 메인 스레드 밖에서 실행한다.
+    /// `DockAXHelper.axFrameInCGCoordinates`가 `NSScreen.screens`를 참조하므로
+    /// primary screen 높이를 메인 스레드에서 미리 캡처하여 detached task에 값으로 전달한다.
+    @MainActor
+    static func windows(for app: NSRunningApplication) async -> [WindowInfo] {
+        // NSScreen은 메인 스레드 전용 — detached task 진입 전에 캡처한다.
+        let primaryScreenHeight = NSScreen.screens
+            .first(where: { $0.frame.origin == .zero })?
+            .frame.height
+            ?? NSScreen.main?.frame.height
+            ?? 0
+
+        return await Task.detached(priority: .userInitiated) {
+            WindowEnumerator.collectWindows(
+                for: app,
+                primaryScreenHeight: primaryScreenHeight
+            )
+        }.value
+    }
+
+    // MARK: - 동기 수집 (Task.detached 내부 전용)
+
+    /// 실제 윈도우 수집 로직. `Task.detached` 클로저에서만 호출된다.
+    ///
+    /// - Parameters:
+    ///   - app: 대상 앱
+    ///   - primaryScreenHeight: 좌표 변환에 사용할 primary screen 높이 (메인 스레드에서 미리 캡처)
+    private static func collectWindows(
+        for app: NSRunningApplication,
+        primaryScreenHeight: CGFloat
+    ) -> [WindowInfo] {
         let pid = app.processIdentifier
 
-        let onScreenWindows = collectWindows(
-            pid: pid,
-            app: app,
-            options: [.optionOnScreenOnly, .excludeDesktopElements],
-            isMinimized: false
-        )
+        let onScreenWindows = collectVisibleWindows(pid: pid, app: app)
 
         // showMinimizedWindows 설정을 UserDefaults에서 직접 읽어 @MainActor 경계를 넘지 않는다.
         // AppSettings.Keys.showMinimizedWindows 상수를 사용하여 키 일관성을 유지한다.
@@ -89,7 +115,8 @@ enum WindowEnumerator {
             app: app,
             pid: pid,
             knownIDs: onScreenIDs.union(Set(minimizedWindows.map(\.id))),
-            allWindowsDict: allWindowsDict
+            allWindowsDict: allWindowsDict,
+            primaryScreenHeight: primaryScreenHeight
         )
 
         let allWindows = onScreenWindows + minimizedWindows + otherSpaceWindows
@@ -109,7 +136,8 @@ enum WindowEnumerator {
         app: NSRunningApplication,
         pid: pid_t,
         knownIDs: Set<CGWindowID>,
-        allWindowsDict: [[CFString: Any]]
+        allWindowsDict: [[CFString: Any]],
+        primaryScreenHeight: CGFloat
     ) -> [WindowInfo] {
 #if MAS_BUILD
         return []
@@ -146,7 +174,8 @@ enum WindowEnumerator {
                 windowID: wid,
                 app: app,
                 pid: pid,
-                cgWindowDict: cgWindowMap[wid]
+                cgWindowDict: cgWindowMap[wid],
+                primaryScreenHeight: primaryScreenHeight
             )
             result.append(info)
         }
@@ -156,13 +185,15 @@ enum WindowEnumerator {
 
     // MARK: - Private Helpers
 
-    private static func collectWindows(
+    /// 온스크린 윈도우만 수집하는 헬퍼 (Pass 1 전용).
+    private static func collectVisibleWindows(
         pid: pid_t,
-        app: NSRunningApplication,
-        options: CGWindowListOption,
-        isMinimized: Bool
+        app: NSRunningApplication
     ) -> [WindowInfo] {
-        let infoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[CFString: Any]] ?? []
+        let infoList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[CFString: Any]] ?? []
 
         return infoList.compactMap { dict -> WindowInfo? in
             guard let windowPID = dict[kCGWindowOwnerPID] as? pid_t,
@@ -173,7 +204,7 @@ enum WindowEnumerator {
             else { return nil }
 
             return makeWindowInfo(from: dict, id: windowID, app: app, pid: pid,
-                                  isMinimized: isMinimized, isOnAnotherSpace: false)
+                                  isMinimized: false, isOnAnotherSpace: false)
         }
     }
 
@@ -207,13 +238,15 @@ enum WindowEnumerator {
     /// 다른 스페이스 윈도우의 WindowInfo를 AX 속성에서 생성.
     ///
     /// CGWindowList에 노출되지 않으므로 타이틀·프레임을 AX API에서 직접 읽는다.
-    /// AX position은 NS 좌표계이므로 CG 좌표계로 변환한다.
+    /// AX position은 NS 좌표계이므로 `primaryScreenHeight`를 이용해 CG 좌표계로 변환한다.
+    /// `NSScreen.screens`는 메인 스레드 전용이므로 호출자가 미리 캡처한 높이를 파라미터로 받는다.
     private static func makeOtherSpaceWindowInfo(
         axWindow: AXUIElement,
         windowID: CGWindowID,
         app: NSRunningApplication,
         pid: pid_t,
-        cgWindowDict: [CFString: Any]?
+        cgWindowDict: [CFString: Any]?,
+        primaryScreenHeight: CGFloat
     ) -> WindowInfo {
         // 타이틀: CGWindowList dict 우선, 없으면 AX kAXTitleAttribute
         let title: String
@@ -226,9 +259,13 @@ enum WindowEnumerator {
         }
 
         // 프레임: AX position(NS 좌표) → CG 좌표 변환
+        // DockAXHelper.axFrameInCGCoordinates는 NSScreen을 참조하므로 직접 인라인 변환한다.
         let frame: CGRect
-        if let axFrame = DockAXHelper.axFrameInCGCoordinates(of: axWindow) {
-            frame = axFrame
+        if let nsFrame = DockAXHelper.axFrame(of: axWindow) {
+            // NS → CG: cgY = screenHeight - nsY - frameHeight
+            let cgY = primaryScreenHeight - nsFrame.origin.y - nsFrame.size.height
+            frame = CGRect(x: nsFrame.origin.x, y: cgY,
+                           width: nsFrame.size.width, height: nsFrame.size.height)
         } else if let boundsDict = cgWindowDict?[kCGWindowBounds] as? [String: CGFloat] {
             frame = CGRect(
                 x: boundsDict["X"] ?? 0,
