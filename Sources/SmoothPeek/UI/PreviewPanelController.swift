@@ -269,13 +269,15 @@ final class PreviewPanelController {
 
         case .left(let dockWidth):
             x = dockWidth + gap
-            let centerY = iconFrame.map { $0.midY - panelSize.height / 2 }
+            // iconFrame은 CG 좌표(좌상단 원점); setFrameOrigin은 NS 좌표(좌하단 원점) 필요.
+            // NS_y = screen.frame.height - CG_y
+            let centerY = iconFrame.map { screen.frame.height - $0.midY - panelSize.height / 2 }
                 ?? (screen.frame.midY - panelSize.height / 2)
             y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
 
         case .right(let dockWidth):
             x = screen.frame.maxX - dockWidth - panelSize.width - gap
-            let centerY = iconFrame.map { $0.midY - panelSize.height / 2 }
+            let centerY = iconFrame.map { screen.frame.height - $0.midY - panelSize.height / 2 }
                 ?? (screen.frame.midY - panelSize.height / 2)
             y = centerY.clamped(to: 8...(screen.frame.maxY - panelSize.height - 8))
         }

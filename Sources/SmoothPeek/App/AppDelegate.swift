@@ -95,6 +95,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "SmoothPeek 환경설정"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
+        // SwiftUI가 높이를 lazily 계산하므로 창 크기를 명시적으로 설정해
+        // 첫 오픈 시 창이 너무 작게 열리는 문제를 방지한다.
+        let fittingSize = host.sizeThatFits(in: CGSize(width: 420, height: 10_000))
+        window.setContentSize(CGSize(width: 420, height: max(fittingSize.height, 360)))
         window.center()
         return window
     }

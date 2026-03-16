@@ -91,11 +91,14 @@ enum WindowActivator {
     private static func titleMatches(_ element: AXUIElement, target: String) -> Bool {
         var titleRef: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleRef)
-        guard let axTitle = titleRef as? String, !axTitle.isEmpty else {
-            // 제목 없는 윈도우는 일단 매칭 허용 (첫 번째 최소화 윈도우가 선택됨)
-            return true
+        let axTitle = (titleRef as? String) ?? ""
+
+        // 양쪽 모두 제목이 있으면 정확히 비교한다.
+        if !axTitle.isEmpty && !target.isEmpty {
+            return axTitle == target
         }
-        return axTitle == target
+        // 한쪽이라도 제목이 없으면 매칭 허용 — 첫 번째 최소화 창이 선택된다.
+        return true
     }
 
     // MARK: - On-Screen Window Raise

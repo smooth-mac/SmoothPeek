@@ -13,6 +13,7 @@ import ApplicationServices
 /// NSEvent.mouseLocation은 NS 좌표계(좌하단 원점, y 위로 증가)를 반환한다.
 /// DockAXHelper.axFrame 및 isMouseOverPanel 콜백은 CG 좌표계(좌상단 원점, y 아래로 증가)를
 /// 기대하므로, primaryScreenHeight - nsY 변환을 통해 CG 좌표로 통일한다.
+@MainActor
 final class DockMonitor {
     var onAppHovered: ((String?, NSRunningApplication?) -> Void)?
     var onHoverEnded: (() -> Void)?
@@ -74,9 +75,7 @@ final class DockMonitor {
         // AXUIElement 접근 가능 여부 확인 — 불가 시 권한 오류 콜백 발생
         guard AXIsProcessTrusted() else {
             print("[DockMonitor] 접근성 권한 없음 — AX 기반 Dock 호버 감지 불가.")
-            DispatchQueue.main.async { [weak self] in
-                self?.onPermissionError?()
-            }
+            onPermissionError?()
             return
         }
 
@@ -97,9 +96,7 @@ final class DockMonitor {
 
         if mouseMonitor == nil {
             print("[DockMonitor] NSEvent 전역 모니터 등록 실패 — 접근성 권한을 확인하세요.")
-            DispatchQueue.main.async { [weak self] in
-                self?.onPermissionError?()
-            }
+            onPermissionError?()
         }
     }
 
@@ -141,8 +138,9 @@ final class DockMonitor {
         // AppSettings.shared는 @MainActor 격리이므로 동일 UserDefaults 키를 통해 값을 읽는다.
         let delay = UserDefaults.standard.double(forKey: AppSettings.Keys.hoverDelay)
         let hoverDelay = delay > 0 ? delay : AppSettings.Defaults.hoverDelay
+        // Timer는 main RunLoop에서 실행되므로 MainActor.assumeIsolated로 격리 보장
         hoverTimer = Timer.scheduledTimer(withTimeInterval: hoverDelay, repeats: false) { [weak self] _ in
-            self?.onAppHovered?(bundleID, hoveredApp)
+            MainActor.assumeIsolated { self?.onAppHovered?(bundleID, hoveredApp) }
         }
     }
 
@@ -154,7 +152,7 @@ final class DockMonitor {
 
         // 약간의 딜레이 후 패널 숨김 (빠른 이동 시 깜빡임 방지)
         hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
-            self?.onHoverEnded?()
+            MainActor.assumeIsolated { self?.onHoverEnded?() }
         }
     }
 

@@ -16,6 +16,10 @@ final class ThumbnailGenerator {
     private let cacheTTL: TimeInterval = 0.5       // 0.5초 캐시
     private let cacheMaxCount: Int = 50            // 최대 50개 항목
 
+    /// 현재 캡처 진행 중인 windowID → Task 매핑.
+    /// 동일 창에 대한 중복 SCKit 캡처를 방지한다.
+    private var inFlight: [CGWindowID: Task<NSImage?, Never>] = [:]
+
     private struct CacheEntry {
         let image: NSImage
         let timestamp: Date
@@ -41,12 +45,22 @@ final class ThumbnailGenerator {
             return entry.image
         }
 
-        let image = await captureWithSCKit(windowID: window.id, size: size)
-
-        if let image {
-            storeThumbnailInCache(windowID: window.id, image: image)
+        // 동일 windowID에 대해 이미 캡처 중이면 해당 Task를 await — 중복 SCKit 캡처 방지
+        if let existing = inFlight[window.id] {
+            return await existing.value
         }
-        return image
+
+        let windowID = window.id
+        let task = Task<NSImage?, Never> {
+            let image = await captureWithSCKit(windowID: windowID, size: size)
+            if let image {
+                storeThumbnailInCache(windowID: windowID, image: image)
+            }
+            inFlight.removeValue(forKey: windowID)
+            return image
+        }
+        inFlight[windowID] = task
+        return await task.value
     }
 
     func clearCache() {
@@ -54,6 +68,8 @@ final class ThumbnailGenerator {
         cacheInsertionOrder.removeAll()
         cachedShareableContent = nil
         shareableContentTimestamp = nil
+        inFlight.values.forEach { $0.cancel() }
+        inFlight.removeAll()
     }
 
     // MARK: - Thumbnail Cache Management

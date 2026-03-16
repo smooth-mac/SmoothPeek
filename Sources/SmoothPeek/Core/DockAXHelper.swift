@@ -8,8 +8,8 @@ import ApplicationServices
 ///
 /// ## 좌표계 주의사항
 ///
-/// AX API의 position은 **NS 좌표계**(좌하단 원점, y 위로 증가)를 사용한다.
-/// CGWindowList의 frame은 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 사용한다.
+/// AX API의 position은 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 사용한다.
+/// CGWindowList의 frame과 동일한 좌표계이다.
 ///
 /// `axFrame(of:)` — NS 좌표계 그대로 반환. NSPanel.setFrameOrigin 등 AppKit API에 사용.
 /// `axFrameInCGCoordinates(of:)` — CG 좌표계로 변환 후 반환. CGWindowList·마우스 이벤트 비교에 사용.
