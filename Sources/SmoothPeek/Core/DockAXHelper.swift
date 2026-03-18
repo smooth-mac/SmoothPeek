@@ -22,7 +22,10 @@ enum DockAXHelper {
     /// AX API는 position/size를 AXValue 타입으로 반환하므로
     /// `CFGetTypeID()` 검사 후 `AXValueGetValue()`로 안전하게 추출한다.
     ///
-    /// - Returns: AX 좌표계(NS 좌표계, 좌하단 원점)의 CGRect. AppKit 좌표계 API에 직접 사용 가능. 실패 시 nil.
+    /// AX API의 `kAXPositionAttribute`는 **CG 좌표계**(좌상단 원점, y 아래로 증가)를 반환한다.
+    /// `setFrameOrigin` 등 AppKit NS 좌표계 API에 사용하려면 별도로 NS 좌표로 변환해야 한다.
+    ///
+    /// - Returns: CG 좌표계(좌상단 원점)의 CGRect. 실패 시 nil.
     static func axFrame(of element: AXUIElement) -> CGRect? {
         var posRef: CFTypeRef?
         var sizeRef: CFTypeRef?
@@ -39,21 +42,16 @@ enum DockAXHelper {
         return CGRect(origin: pos, size: size)
     }
 
-    /// AXUIElement의 frame을 CG 좌표계(좌상단 원점, y 아래로 증가)로 변환해 반환.
+    /// AXUIElement의 frame을 CG 좌표계(좌상단 원점, y 아래로 증가)로 반환.
     ///
-    /// AX 좌표계(NS 좌표계, 좌하단 원점)에서 CG 좌표계로 변환:
-    /// `cgY = primaryScreenHeight - nsY - frameHeight`
+    /// AX API의 `kAXPositionAttribute`는 이미 CG 좌표계를 사용하므로 추가 변환 없이 그대로 반환한다.
+    /// (`axFrame(of:)`와 동일한 값. 호출 측 코드의 의도를 명확히 하기 위한 alias 역할)
     ///
-    /// primary screen(origin == .zero인 화면)의 높이를 기준으로 사용한다.
     /// 마우스 이벤트 좌표(CG) 및 CGWindowList frame과 직접 비교할 때 사용한다.
     ///
     /// - Returns: CG 좌표계(좌상단 원점)의 CGRect. 실패 시 nil.
     static func axFrameInCGCoordinates(of element: AXUIElement) -> CGRect? {
-        guard let nsFrame = axFrame(of: element) else { return nil }
-        let screenHeight = NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
-                        ?? NSScreen.main?.frame.height ?? 0
-        let cgY = screenHeight - nsFrame.origin.y - nsFrame.size.height
-        return CGRect(x: nsFrame.origin.x, y: cgY, width: nsFrame.size.width, height: nsFrame.size.height)
+        return axFrame(of: element)
     }
 
     // MARK: - Bundle ID 추출

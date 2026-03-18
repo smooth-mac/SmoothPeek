@@ -285,11 +285,13 @@ final class PreviewPanelController {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
-    /// Dock 아이콘의 AX 프레임(NS 좌표계)을 반환.
+    /// Dock 아이콘의 AX 프레임(CG 좌표계, 좌상단 원점)을 반환.
     ///
-    /// - `midX`: 패널 수평 중앙 정렬에 사용
-    /// - `maxY`: 패널 하단 Y 기준점 — Dock 영역 상단이 아닌 아이콘 상단 기준으로
-    ///           패널을 위치시켜 앱마다 일정한 간격이 유지된다.
+    /// AX API는 CG 좌표계를 사용하므로 반환값은 CG 좌표계다.
+    /// setFrameOrigin(NS 좌표계) 호출 전에 `screen.frame.height - cgY` 변환이 필요하다.
+    ///
+    /// - `midX`: 패널 수평 중앙 정렬에 사용 (X축은 CG/NS 동일)
+    /// - `midY`: 패널 수직 중앙 정렬에 사용 (CG→NS 변환 후)
     private func findDockIconFrame(for app: NSRunningApplication) -> CGRect? {
         guard let dockApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.bundleIdentifier == "com.apple.dock"
