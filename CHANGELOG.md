@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v1.0.1] - 2026-03-18
+
+### Fixed
+- Preview panel appearing at the top of the screen when hovering a Dock icon — removed double coordinate conversion (AX → CG → CG) in `DockAXHelper.swift` that incorrectly shifted the computed anchor position (commit 64e2237)
+- Ghost minimized windows appearing in the preview panel when no windows were actually minimized — replaced CGWindowList off-screen heuristic in `WindowEnumerator.swift` with direct AX `kAXMinimizedAttribute` query for reliable minimized-state detection (commit 64e2237)
+
+### Changed
+- Improved coordinate-system comments in `PreviewPanelController.swift` for accuracy
+
+---
+
 ## [Unreleased]
 
 _No unreleased changes at this time._
@@ -45,5 +56,6 @@ _No unreleased changes at this time._
 ---
 
 <!-- Version Links -->
+[v1.0.1]: https://github.com/juholee/SmoothPeek/releases/tag/v1.0.1
 [v1.0.0]: https://github.com/juholee/SmoothPeek/releases/tag/v1.0.0
-[Unreleased]: https://github.com/juholee/SmoothPeek/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/juholee/SmoothPeek/compare/v1.0.1...HEAD
